@@ -1,0 +1,4 @@
+<launch>
+    <!-- Launch RViz with a specific configuration file -->
+    <node name="rviz" pkg="rviz" type="rviz" args="-d $(find camera_rospkg)/rviz/camera.rviz" output="screen" />
+</launch>

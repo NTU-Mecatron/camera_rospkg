@@ -1,0 +1,18 @@
+<launch>
+
+    <group ns="/sensor/camera" >
+        <rosparam param="disable_pub_plugins">
+            - 'image_transport/compressed'
+            - 'image_transport/compressedDepth'
+            - 'image_transport/theora'
+        </rosparam>
+    </group>
+    <node name="camera_publisher" pkg="camera_rospkg" type="camera_publisher" output="screen">
+        <param name="input" type="string" value="/dev/video0" />
+        <param name="topic_name" type="string" value="/sensor/camera" />
+        <param name="is_wsl2" type="bool" value="true" />
+        <param name="is_display" type="bool" value="false" />
+        <!-- <param name="mp4_output_path" type="string" value="$(find camera_rospkg)/recordings/output.mp4" /> -->
+    </node>
+    
+</launch>
