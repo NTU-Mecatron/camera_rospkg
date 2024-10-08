@@ -52,7 +52,9 @@ The launch file contains the following parameters:
 - `is_wsl2` (bool): whether to MJPG encoding. Discourage to use this when not working with WSL2. Default: false.
 - `is_display` (bool): whether to display the images on screen. Default: false.
 
-You may also notice that there is also the parameter list `disable_pub_plugins` which disables the plugins such as `compressed`, `compressedDepth` and `theora` publishers. These plugins are not required and can cause additional bugs when not used.
+You may also notice that there is also the parameter list `disable_pub_plugins` which disables the plugins such as `compressedDepth` and `theora` publishers. These plugins are not required and can cause additional bugs when not used.
+
+In the launch file, there is also a section to enable rosbag recording. Just uncomment this block of code and it will work!
 
 #### Published Topics
 
