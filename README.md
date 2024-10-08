@@ -142,4 +142,3 @@ source ~/.bashrc
 ```
 
 Then, rebuild the package. Original solution found [here](https://stackoverflow.com/questions/8711109/could-not-find-module-findopencv-cmake-error-in-configuration-process).
-```
