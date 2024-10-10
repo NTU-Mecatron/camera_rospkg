@@ -31,7 +31,25 @@ The `camera_rospkg` package provides tools for publishing images from a camera d
     catkin_make
     ```
 
-3. Open rviz:
+3. Install dependencies: (Remember to replace `${ROS_DISTRO}` with your ROS distribution)
+    ```
+    export ROS_DISTRO=noetic
+    sudo apt update
+    sudo apt install -y ros-${ROS_DISTRO}-cv-bridge
+    sudo apt install -y ros-${ROS_DISTRO}-image-transport ros-${ROS_DISTRO}-compressed-image-transport
+    sudo apt remove -y ros-${ROS_DISTRO}-compressed-depth-image-transport ros-${ROS_DISTRO}-theora-image-transport
+    ```
+    Verify:
+    ```
+    rospack plugins --attrib=plugin image_transport
+    ```
+    You should see the following output:
+    ```
+    compressed_image_transport /opt/ros/noetic/share/compressed_image_transport/compressed_plugins.xml
+    image_transport /opt/ros/noetic/share/image_transport/default_plugins.xml
+    ```
+
+4. Open rviz:
     ```
     source devel/setup.bash
     roslaunch camera_rospkg rviz.launch
@@ -70,7 +88,7 @@ nh.getParam("/${THIS_NODE_NAME}/topic_name", camera_topic);
 
 ## Known limitations
 
-The camera recording feature (saving to mp4) is not fully implemented and will not work. It is work in progress.
+The camera recording feature (saving to mp4) is not fully tested. It has been tested to work with Jetson Nano opencv (the default opencv coming with Jetson Nano). If attempted on your local machine, it may fail because opencv might not be installed properly.
 
 ## Common issues
 
