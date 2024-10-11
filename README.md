@@ -69,8 +69,7 @@ The launch file contains the following parameters:
 - `topic_name` (string): the topic name to publish the images to.
 - `is_wsl2` (bool): whether to MJPG encoding. Discourage to use this when not working with WSL2. Default: false.
 - `is_display` (bool): whether to display the images on screen. Default: false.
-
-You may also notice that there is also the parameter list `disable_pub_plugins` which disables the plugins such as `compressedDepth` and `theora` publishers. These plugins are not required and can cause additional bugs when not used.
+- `mp4_output_folder` (string): the folder to save the mp4 file. The mp4 file name will be uniquely generated in the format `<YYYY-MM-DD-HH-MM-SS>.mp4` at which it was created.
 
 In the launch file, there is also a section to enable rosbag recording. Just uncomment this block of code and it will work!
 
@@ -78,13 +77,7 @@ In the launch file, there is also a section to enable rosbag recording. Just unc
 
 - `/sensor/camera` (`sensor_msgs/Image`): The raw image topic from the camera.
 
-**Warning**: you are discouraged to use this topic name directly in your other packages. Instead, you are encouraged to get this parameter from ros parameter server as follows:
-
-```cpp
-// Replace ${THIS_NODE_NAME} with the name of the node you are using.
-// In this case, it will be camera_publisher.
-nh.getParam("/${THIS_NODE_NAME}/topic_name", camera_topic);
-```
+> Note: you are discouraged to use this topic name directly in your other packages. Instead, you are encouraged to set a parameter in your ros launch file and use that parameter to set the topic name. 
 
 ## Known limitations
 
