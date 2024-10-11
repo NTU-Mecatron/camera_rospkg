@@ -7,12 +7,22 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.getParam("topic_name", topic_name_);
     nh_.getParam("is_wsl2", is_wsl2_);
     nh_.getParam("is_display", is_display_);
-    nh_.getParam("mp4_output_path", mp4_output_path_);
+    nh_.getParam("mp4_output_folder", mp4_output_folder_);
 
-    if (mp4_output_path_ == "")
+    std::string mp4_file_name = "";
+
+    if (mp4_output_folder_ == "")
         ROS_INFO("MP4 output path not set.");
-    else
-        ROS_INFO("Saving MP4 video to: %s", mp4_output_path_.c_str());
+    else {
+        // Remove trailing '/' if it exists
+        if (mp4_output_folder_.back() == '/') {
+            mp4_output_folder_.pop_back();
+        }
+
+        mp4_file_name = generateMP4FileName();
+        mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
+        ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
+    }
 
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
@@ -42,10 +52,10 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     }
     
     // Initialize the VideoWriter if the MP4 output path is set
-    if (!mp4_output_path_.empty()) {
+    if (!mp4_file_name.empty()) {
         int frame_width = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
         int frame_height = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
-        video_writer_.open(mp4_output_path_, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, cv::Size(frame_width, frame_height), true);
+        video_writer_.open(mp4_file_name, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, cv::Size(frame_width, frame_height), true);
 
         if (!video_writer_.isOpened()) {
             ROS_ERROR("Failed to open video writer");
