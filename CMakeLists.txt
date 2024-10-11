@@ -30,6 +30,6 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
 )
 
-add_executable(camera_publisher src/main.cpp src/camera_publisher.cpp)
+add_executable(camera_publisher src/main.cpp src/camera_publisher.cpp src/utils.cpp)
 target_link_libraries(camera_publisher ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(camera_publisher ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

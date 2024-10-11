@@ -6,6 +6,7 @@
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
 #include <opencv2/opencv.hpp>
+#include <camera_rospkg/utils.h>
 
 class CameraPublisher {
 public:
@@ -23,7 +24,7 @@ private:
     std::string topic_name_ = "/sensor/camera";
     bool is_wsl2_ = false;
     bool is_display_ = false;
-    std::string mp4_output_path_ = "";
+    std::string mp4_output_folder_ = "";
     cv::VideoWriter video_writer_;
 };
 
