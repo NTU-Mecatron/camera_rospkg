@@ -7,8 +7,9 @@
     <node name="camera_publisher" pkg="camera_rospkg" type="camera_publisher" output="screen">
         <param name="input" type="string" value="/dev/video0" />
         <param name="topic_name" type="string" value="$(arg camera1_topic)" />
-        <param name="is_wsl2" type="bool" value="true" />
+        <param name="is_wsl2" type="bool" value="false" />
         <param name="is_display" type="bool" value="false" />
+        <param name="frame_rate" type="int" value="20" />
         <!-- <param name="mp4_output_folder" type="string" value="$(find camera_rospkg)/recordings" /> -->
     </node>
     <!--============ End of first camera node ================-->

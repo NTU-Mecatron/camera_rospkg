@@ -64,14 +64,15 @@ The `camera_rospkg` package provides tools for publishing images from a camera d
 
 #### Launch file
 
-The launch file contains the following parameters:
-- `input` (string): camera device such as `/dev/video0` or video file path.
-- `topic_name` (string): the topic name to publish the images to.
-- `is_wsl2` (bool): whether to MJPG encoding. Discourage to use this when not working with WSL2. Default: false.
-- `is_display` (bool): whether to display the images on screen. Default: false.
+The `camera.launch` file contains the following parameters:
+- `input` (string): camera device or video file path. Default: `/dev/video0`.
+- `topic_name` (string): the topic name to publish the images to. Default: `/sensor/camera`.
+- `is_wsl2` (bool): whether to MJPG encoding. Discourage to use this when not working with WSL2. Default: `false`.
+- `is_display` (bool): whether to display the images on screen. Default: `false`.
+- `frame_rate` (int): the frame rate to publish the images. Default: `20`.
 - `mp4_output_folder` (string): the folder to save the mp4 file. The mp4 file name will be uniquely generated in the format `<YYYY-MM-DD-HH-MM-SS>.mp4` at which it was created.
 
-In the launch file, there is also a section to enable rosbag recording. Just uncomment this block of code and it will work!
+There is also the `rviz.launch` file which launches rviz with the camera topic as the image source, and the `rosbag.launch` file which will **record all topics except for raw image topics**. This is because the raw image topics are too large to be recorded and will cause the rosbag to be too large.
 
 #### Published Topics
 
