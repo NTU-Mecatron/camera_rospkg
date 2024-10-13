@@ -3,11 +3,11 @@
 CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_) 
 {
     // Get the topic name from the parameter server
-    nh_.getParam("input", input_);
-    nh_.getParam("topic_name", topic_name_);
-    nh_.getParam("is_wsl2", is_wsl2_);
-    nh_.getParam("is_display", is_display_);
-    nh_.getParam("mp4_output_folder", mp4_output_folder_);
+    nh_.param<std::string>("input", input_, "/dev/video0");
+    nh_.param<std::string>("topic_name", topic_name_, "/sensor/camera");
+    nh_.param<bool>("is_wsl2", is_wsl2_, false);
+    nh_.param<bool>("is_display", is_display_, false);
+    nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
 
     std::string mp4_file_name = "";
 

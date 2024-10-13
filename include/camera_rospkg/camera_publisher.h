@@ -20,11 +20,11 @@ private:
     cv::VideoCapture cap_;
     cv::Mat frame_;
     sensor_msgs::ImagePtr msg_;
-    std::string input_ = "/dev/video0";
-    std::string topic_name_ = "/sensor/camera";
-    bool is_wsl2_ = false;
-    bool is_display_ = false;
-    std::string mp4_output_folder_ = "";
+    std::string input_;
+    std::string topic_name_;
+    bool is_wsl2_;
+    bool is_display_;
+    std::string mp4_output_folder_;
     cv::VideoWriter video_writer_;
 };
 
