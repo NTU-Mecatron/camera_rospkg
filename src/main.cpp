@@ -6,11 +6,14 @@ int main(int argc, char** argv) {
 
     CameraPublisher camera_publisher(nh);
 
-    while (ros::ok()) {
+    int frame_rate;
+    nh.param<int>("frame_rate", frame_rate, 30);
+    ros::Rate loop_rate(frame_rate);
+
+    while (ros::ok()) 
+    {
         camera_publisher.publishImage();
-        ros::spinOnce();
-        cv::waitKey(5);
-        // loop_rate.sleep();
+        loop_rate.sleep();
     }
 
     return 0;
