@@ -1,7 +1,7 @@
 <launch>
 
     <arg name="camera1_topic" value="/sensor/camera" />
-    <!-- <arg name="camera2_topic" value="/sensor/camera2" /> -->
+    <arg name="camera2_topic" value="/sensor/camera2" />
 
     <!--============== Launch the first camera node ==============-->
     <node name="camera_publisher" pkg="camera_rospkg" type="camera_publisher" output="screen">
@@ -13,7 +13,11 @@
         <!-- <param name="mp4_output_folder" type="string" value="$(find camera_rospkg)/recordings" /> -->
     </node>
     <!--============ End of first camera node ================-->
-
-    <!--============== Copy the above code below if want to launch second camera node ==============-->
-    
+	<node name="camera_publisher2" pkg="camera_rospkg" type="camera_publisher" output="screen">
+	<param name="input" type="string" value="/dev/video1" />
+        <param name="topic_name" type="string" value="$(arg camera2_topic)" />
+        <param name="is_wsl2" type="bool" value="false" />
+        <param name="is_display" type="bool" value="false" />
+        <param name="frame_rate" type="int" value="20" />
+	</node>
 </launch>
