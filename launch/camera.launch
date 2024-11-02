@@ -10,7 +10,7 @@
         <param name="is_wsl2" type="bool" value="false" />
         <param name="is_display" type="bool" value="false" />
         <param name="frame_rate" type="int" value="15" />
-        <!-- <param name="calibration_yaml_path" type="string" value="$(find camera_rospkg)/calibration_yaml/dwe.yaml" /> -->
+        <param name="calibration_yaml_path" type="string" value="$(find camera_rospkg)/calibration_yaml/dwe.yaml" />
         <!-- <param name="mp4_output_folder" type="string" value="$(find camera_rospkg)/recordings/dwecam/" /> -->
     </node>
 
