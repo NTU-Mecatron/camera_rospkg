@@ -18,7 +18,7 @@ private:
     image_transport::ImageTransport it_;
     image_transport::Publisher image_pub_;
     cv::VideoCapture cap_;
-    cv::Mat frame_;
+    cv::Mat frame_, raw_frame_;
     sensor_msgs::ImagePtr msg_;
     std::string input_;
     std::string topic_name_;
@@ -26,6 +26,12 @@ private:
     bool is_display_;
     std::string mp4_output_folder_;
     cv::VideoWriter video_writer_;
+
+    std::string calibration_yaml_path_;
+    cv::Mat camera_matrix_, dist_coeffs_;
+    cv::Mat map1_, map2_;
+    bool is_calibration_enabled_ = false;
+    void loadCameraCalibration();
 };
 
 #endif // PHYSICAL_CAMERA_H

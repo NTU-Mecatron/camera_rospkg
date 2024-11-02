@@ -8,6 +8,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.param<bool>("is_wsl2", is_wsl2_, false);
     nh_.param<bool>("is_display", is_display_, false);
     nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
+    nh_.param<std::string>("calibration_yaml_path", calibration_yaml_path_, "");
 
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
@@ -35,6 +36,12 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     {
         ROS_INFO("Camera opened successfully");
     }
+
+    // Load the camera calibration parameters
+    if (calibration_yaml_path_ != "") 
+        loadCameraCalibration();
+    else 
+        ROS_WARN("Camera calibration file not provided!");
 
     std::string mp4_file_name = "";
     if (mp4_output_folder_ == "")
@@ -65,10 +72,16 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
 
 void CameraPublisher::publishImage() 
 {
-    cap_ >> frame_; // Capture a frame
+    if (is_calibration_enabled_) {
+        cap_ >> raw_frame_; // Capture a frame
+        cv::remap(raw_frame_, frame_, map1_, map2_, cv::INTER_LINEAR); // Undistort the frame
+    }
+    else cap_ >> frame_; // Capture a frame
 
-    if (is_display_) 
+    if (is_display_) {
         cv::imshow("frame", frame_); // Display the frame
+        cv::waitKey(10);
+    }
 
     if (!frame_.empty()) 
     {
@@ -79,4 +92,38 @@ void CameraPublisher::publishImage()
 
     if (video_writer_.isOpened()) 
         video_writer_ << frame_; // Write the frame to the video
+}
+
+void CameraPublisher::loadCameraCalibration() 
+{
+    // Load the camera calibration parameters from the YAML file
+    cv::FileStorage fs(calibration_yaml_path_, cv::FileStorage::READ);
+    if (!fs.isOpened()) 
+    {
+        ROS_ERROR("Failed to open camera calibration file: %s", calibration_yaml_path_.c_str());
+        ros::shutdown();
+    }
+
+    fs["Camera_Matrix"] >> camera_matrix_;
+    fs["Distortion_Coefficients"] >> dist_coeffs_;
+    fs.release();
+
+    // Check the dimensions of the loaded matrices
+    if (camera_matrix_.rows != 3 || camera_matrix_.cols != 3) {
+        ROS_ERROR("Invalid camera matrix dimensions!");
+    }
+
+    if (dist_coeffs_.rows != 5 || dist_coeffs_.cols != 1) {
+        ROS_ERROR("Invalid distortion coefficients dimensions!");
+    }
+
+    cv::Size imageSize = cv::Size(static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH)), static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT)));
+
+    cv::initUndistortRectifyMap(
+                camera_matrix_, dist_coeffs_, cv::Mat(),
+                cv::getOptimalNewCameraMatrix(camera_matrix_, dist_coeffs_, imageSize, 0, imageSize, 0), imageSize,
+                CV_16SC2, map1_, map2_);
+
+    ROS_WARN("Camera calibration enabled!");
+    is_calibration_enabled_ = true;
 }
