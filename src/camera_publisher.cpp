@@ -41,7 +41,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     if (calibration_yaml_path_ != "") 
         loadCameraCalibration();
     else 
-        ROS_WARN("Camera calibration file not provided!");
+        ROS_WARN("Camera calibration file NOT provided!");
 
     std::string mp4_file_name = "";
     if (mp4_output_folder_ == "")
