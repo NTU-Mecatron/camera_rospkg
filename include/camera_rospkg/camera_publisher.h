@@ -19,6 +19,7 @@ private:
     image_transport::Publisher image_pub_;
     cv::VideoCapture cap_;
     cv::Mat frame_, raw_frame_;
+    int wb_temp_;
     sensor_msgs::ImagePtr msg_;
     std::string input_;
     std::string topic_name_;

@@ -9,6 +9,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.param<bool>("is_display", is_display_, false);
     nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
     nh_.param<std::string>("calibration_yaml_path", calibration_yaml_path_, "");
+    nh_.param<int>("whitebalance_temperature", wb_temp_, -1);
 
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
@@ -19,13 +20,10 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     {
         cap_.open(input_, cv::CAP_V4L2);
         cap_.set(cv::CAP_PROP_FOURCC, cv::VideoWriter::fourcc('M', 'J', 'P', 'G'));
-        ROS_WARN("WSL2 mode. MJPG codec enabled!");
+        ROS_WARN("WSL2 mode. Are you sure?");
     }
     else 
-    {
         cap_.open(input_);
-        ROS_INFO("Native mode. MJPG codec disabled.");
-    }
 
     if (!cap_.isOpened()) 
     {
@@ -33,9 +31,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
         ros::shutdown();
     }
     else 
-    {
         ROS_INFO("Camera opened successfully");
-    }
 
     // Load the camera calibration parameters
     if (calibration_yaml_path_ != "") 
@@ -43,6 +39,15 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     else 
         ROS_WARN("Camera calibration file NOT provided!");
 
+    // Whitebalance the camera
+    if (wb_temp_ != -1) 
+    {
+        cap_.set(cv::CAP_PROP_AUTO_WB, 1);
+        cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temp_);
+        ROS_INFO("Whitebalance set to: %d", wb_temp_);
+    }
+
+    // Initialize the video writer if mp4 saving is enabled
     std::string mp4_file_name = "";
     if (mp4_output_folder_ == "")
         ROS_WARN("MP4 recording is NOT enabled!");
