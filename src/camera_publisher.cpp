@@ -46,6 +46,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
         cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temp_);
         ROS_INFO("Whitebalance set to: %d", wb_temp_);
     }
+    else cap_.set(cv::CAP_PROP_AUTO_WB, 1);
 
     // Initialize the video writer if mp4 saving is enabled
     std::string mp4_file_name = "";
