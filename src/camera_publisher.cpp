@@ -42,7 +42,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     // Whitebalance the camera
     if (wb_temp_ != -1) 
     {
-        cap_.set(cv::CAP_PROP_AUTO_WB, 1);
+        cap_.set(cv::CAP_PROP_AUTO_WB, 0);
         cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temp_);
         ROS_INFO("Whitebalance set to: %d", wb_temp_);
     }
