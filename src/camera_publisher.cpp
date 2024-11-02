@@ -9,21 +9,6 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.param<bool>("is_display", is_display_, false);
     nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
 
-    std::string mp4_file_name = "";
-
-    if (mp4_output_folder_ == "")
-        ROS_INFO("MP4 output path not set.");
-    else {
-        // Remove trailing '/' if it exists
-        if (mp4_output_folder_.back() == '/') {
-            mp4_output_folder_.pop_back();
-        }
-
-        mp4_file_name = generateMP4FileName();
-        mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
-        ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
-    }
-
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
     ROS_INFO("Publishing camera images to topic: %s", topic_name_.c_str());
@@ -38,7 +23,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     else 
     {
         cap_.open(input_);
-        ROS_WARN("Native mode. MJPG codec disabled.");
+        ROS_INFO("Native mode. MJPG codec disabled.");
     }
 
     if (!cap_.isOpened()) 
@@ -49,6 +34,20 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     else 
     {
         ROS_INFO("Camera opened successfully");
+    }
+
+    std::string mp4_file_name = "";
+    if (mp4_output_folder_ == "")
+        ROS_WARN("MP4 recording is NOT enabled!");
+    else {
+        // Remove trailing '/' if it exists
+        if (mp4_output_folder_.back() == '/') {
+            mp4_output_folder_.pop_back();
+        }
+
+        mp4_file_name = generateMP4FileName();
+        mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
+        ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
     }
     
     // Initialize the VideoWriter if the MP4 output path is set
