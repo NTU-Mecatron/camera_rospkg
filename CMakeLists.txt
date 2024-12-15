@@ -8,14 +8,26 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge
   image_transport
+  message_generation
 )
 
 find_package(OpenCV REQUIRED)
 
+add_service_files(
+  FILES
+  StartRecording.srv
+  StopRecording.srv
+)
+
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
+
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES camera_rospkg
- CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs image_transport cv_bridge
+ CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs image_transport cv_bridge message_runtime 
 #  DEPENDS system_lib
 )
 
