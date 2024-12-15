@@ -15,9 +15,9 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     image_pub_ = it_.advertise(topic_name_, 1);
     ROS_INFO("Publishing camera images to topic: %s", topic_name_.c_str());
 
+    // Initialize the service servers
     start_recording_srv_ = nh_.advertiseService("start_recording", &CameraPublisher::startRecordingCallback, this);
     stop_recording_srv_ = nh_.advertiseService("stop_recording", &CameraPublisher::stopRecordingCallback, this);
-    std::cout << "Service servers started!" << std::endl;
 
     // Open the camera in WSL2
     if (is_wsl2_) 
@@ -80,6 +80,9 @@ void CameraPublisher::publishImage()
 
     if (video_writer_.isOpened()) 
         video_writer_ << frame_; // Write the frame to the video
+
+    // Need to spin once to let the service servers work
+    ros::spinOnce();
 }
 
 bool CameraPublisher::startRecordingCallback(camera_rospkg::StartRecording::Request &req, camera_rospkg::StartRecording::Response &res) {
