@@ -15,6 +15,10 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     image_pub_ = it_.advertise(topic_name_, 1);
     ROS_INFO("Publishing camera images to topic: %s", topic_name_.c_str());
 
+    start_recording_srv_ = nh_.advertiseService("start_recording", &CameraPublisher::startRecordingCallback, this);
+    stop_recording_srv_ = nh_.advertiseService("stop_recording", &CameraPublisher::stopRecordingCallback, this);
+    std::cout << "Service servers started!" << std::endl;
+
     // Open the camera in WSL2
     if (is_wsl2_) 
     {
@@ -48,32 +52,10 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     }
     else cap_.set(cv::CAP_PROP_AUTO_WB, 1);
 
-    // Initialize the video writer if mp4 saving is enabled
-    std::string mp4_file_name = "";
     if (mp4_output_folder_ == "")
         ROS_WARN("MP4 recording is NOT enabled!");
-    else {
-        // Remove trailing '/' if it exists
-        if (mp4_output_folder_.back() == '/') {
-            mp4_output_folder_.pop_back();
-        }
-
-        mp4_file_name = generateMP4FileName();
-        mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
-        ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
-    }
-    
-    // Initialize the VideoWriter if the MP4 output path is set
-    if (!mp4_file_name.empty()) {
-        int frame_width = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
-        int frame_height = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
-        video_writer_.open(mp4_file_name, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, cv::Size(frame_width, frame_height), true);
-
-        if (!video_writer_.isOpened()) {
-            ROS_ERROR("Failed to open video writer");
-            ros::shutdown();
-        }
-    }
+    else if (mp4_output_folder_.back() == '/')
+        mp4_output_folder_.pop_back();
 }
 
 void CameraPublisher::publishImage() 
@@ -98,6 +80,49 @@ void CameraPublisher::publishImage()
 
     if (video_writer_.isOpened()) 
         video_writer_ << frame_; // Write the frame to the video
+}
+
+bool CameraPublisher::startRecordingCallback(camera_rospkg::StartRecording::Request &req, camera_rospkg::StartRecording::Response &res) {
+    if (is_recording_started_) {
+        ROS_WARN("Recording already started!");
+        res.is_success = false;
+        return true;
+    } else if (mp4_output_folder_ == "") {
+        ROS_ERROR("MP4 recording is NOT enabled!");
+        res.is_success = false;
+        return true;
+    }
+
+    std::string mp4_file_name = "";
+    mp4_file_name = generateMP4FileName();
+    mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
+    ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
+
+    int frame_width = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
+    int frame_height = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_HEIGHT));
+    video_writer_.open(mp4_file_name, cv::VideoWriter::fourcc('m', 'p', '4', 'v'), 30, cv::Size(frame_width, frame_height), true);
+
+    if (!video_writer_.isOpened()) {
+        ROS_ERROR("Failed to open video writer");
+        res.is_success = false;
+    } else {
+        res.is_success = true;
+        is_recording_started_ = true;
+    }
+    return true;
+}
+
+bool CameraPublisher::stopRecordingCallback(camera_rospkg::StopRecording::Request &req, camera_rospkg::StopRecording::Response &res) {
+    if (!is_recording_started_) {
+        ROS_WARN("Recording is NOT started!");
+        res.is_success = false;
+        return true;
+    }
+    video_writer_.release();
+    is_recording_started_ = false;
+    ROS_WARN("Recording stopped!");
+    res.is_success = true;
+    return true;
 }
 
 void CameraPublisher::loadCameraCalibration() 
