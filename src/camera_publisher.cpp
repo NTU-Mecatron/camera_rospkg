@@ -98,7 +98,7 @@ bool CameraPublisher::startRecordingCallback(camera_rospkg::StartRecording::Requ
 
     std::string mp4_file_name = "";
     mp4_file_name = generateMP4FileName();
-    mp4_file_name = mp4_output_folder_ + mp4_file_name;
+    mp4_file_name = mp4_output_folder_ + "/" + mp4_file_name;
     ROS_WARN("Saving MP4 video to: %s", mp4_file_name.c_str());
 
     int frame_width = static_cast<int>(cap_.get(cv::CAP_PROP_FRAME_WIDTH));
