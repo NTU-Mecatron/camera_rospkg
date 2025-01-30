@@ -12,7 +12,7 @@
         <param name="frame_rate" type="int" value="15" />
         <!-- <param name="whitebalance_temperature" type="int" value="15" /> -->
         <param name="calibration_yaml_path" type="string" value="$(find camera_rospkg)/calibration_yaml/dwe.yaml" />
-        <param name="mp4_output_folder" type="string" value="$(find camera_rospkg)/recordings/dwecam/" />
+        <param name="mp4_output_folder" type="string" value="$(find camera_rospkg)/recordings/dwecam" />
     </node>
 
     <!-- <node name="camera_publisher2" pkg="camera_rospkg" type="camera_publisher" output="screen">
