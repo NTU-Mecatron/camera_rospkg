@@ -4,7 +4,7 @@
     <arg name="camera2_topic" default="/sensor/camera2" />
 
     <node name="camera_publisher" pkg="camera_rospkg" type="camera_publisher" output="screen">
-        <!-- <param name="input" type="string" value="$(find camera_rospkg)/recordings/dwecam/arm_camera.mp4" /> -->
+        <!-- <param name="input" type="string" value="$(find camera_rospkg)/recordings/dwecam/arm_camera1.mp4" /> -->
         <param name="input" type="string" value="/dev/video0" />
         <param name="topic_name" type="string" value="$(arg camera1_topic)" />
         <param name="is_wsl2" type="bool" value="false" />
