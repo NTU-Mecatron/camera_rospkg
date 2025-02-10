@@ -156,3 +156,18 @@ source ~/.bashrc
 ```
 
 Then, rebuild the package. Original solution found [here](https://stackoverflow.com/questions/8711109/could-not-find-module-findopencv-cmake-error-in-configuration-process).
+
+> [!TIP]
+> ### Two important requirements:  
+> - libopencv>=4.2.0  
+> - libopencv-dev==4.2.0  
+> ```
+> dpkg -l | grep libopencv
+> ```
+> **If your current libopencv version does not fulfill the above requirements, you can either**
+> ```
+> sudo apt remove libopencv libopencv-dev
+> sudo apt update
+> sudo apt install libopencv-dev=4.2.0+dfsg-5
+> sudo apt install ros-noetic-compressed-image-transport
+> ``` 
