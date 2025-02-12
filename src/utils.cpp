@@ -7,7 +7,7 @@ std::string generateMP4FileName() {
 
     // Create a string stream to format the date and time
     std::ostringstream oss;
-    oss << std::put_time(now_tm, "%Y-%m-%d-%H-%M-%S") << ".mp4";
+    oss << "_" << std::put_time(now_tm, "%Y-%m-%d-%H-%M-%S") << ".mp4";
 
     // Return the formatted string
     return oss.str();
