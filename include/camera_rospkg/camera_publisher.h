@@ -2,6 +2,8 @@
 #define PHYSICAL_CAMERA_H
 
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
+#include <std_srvs/Trigger.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
@@ -14,6 +16,7 @@ class CameraPublisher {
 public:
     CameraPublisher(ros::NodeHandle& nh);
     void publishImage();
+    void publishRecordingStatus();
 
 private:
     ros::NodeHandle nh_;
@@ -39,8 +42,10 @@ private:
 
     ros::ServiceServer start_recording_srv_;
     ros::ServiceServer stop_recording_srv_;
-    bool startRecordingCallback(camera_rospkg::StartRecording::Request &req, camera_rospkg::StartRecording::Response &res);
-    bool stopRecordingCallback(camera_rospkg::StopRecording::Request &req, camera_rospkg::StopRecording::Response &res);
+    bool startRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+    bool stopRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+
+    ros::Publisher recording_status_pub_;
 };
 
 #endif // PHYSICAL_CAMERA_H

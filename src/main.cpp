@@ -3,6 +3,7 @@
 int main(int argc, char** argv) {
     ros::init(argc, argv, "camera_publisher");
     ros::NodeHandle nh("~");
+    ros::Time last_status_pub_time = ros::Time::now();
 
     CameraPublisher camera_publisher(nh);
 
@@ -13,6 +14,13 @@ int main(int argc, char** argv) {
     while (ros::ok()) 
     {
         camera_publisher.publishImage();
+        
+        // Publish the recording status in 1 hz
+        if (ros::Time::now() - last_status_pub_time > ros::Duration(1.0)) {
+            camera_publisher.publishRecordingStatus();
+            last_status_pub_time = ros::Time::now();
+        }
+
         loop_rate.sleep();
     }
 
