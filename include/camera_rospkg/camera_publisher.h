@@ -9,8 +9,6 @@
 #include <sensor_msgs/Image.h>
 #include <opencv2/opencv.hpp>
 #include <camera_rospkg/utils.h>
-#include <camera_rospkg/StartRecording.h>
-#include <camera_rospkg/StopRecording.h>
 
 class CameraPublisher {
 public:
@@ -40,10 +38,8 @@ private:
     bool is_calibration_enabled_ = false;
     void loadCameraCalibration();
 
-    ros::ServiceServer start_recording_srv_;
-    ros::ServiceServer stop_recording_srv_;
-    bool startRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
-    bool stopRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+    ros::ServiceServer on_off_recording_srv_;
+    bool OnOffRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
 
     ros::Publisher recording_status_pub_;
 };

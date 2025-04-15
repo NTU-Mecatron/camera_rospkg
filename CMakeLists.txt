@@ -14,11 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(OpenCV REQUIRED)
 
-add_service_files(
-  FILES
-  StartRecording.srv
-  StopRecording.srv
-)
+# add_service_files(
+#   FILES
+# )
 
 generate_messages(
   DEPENDENCIES
