@@ -16,7 +16,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     ROS_INFO("Publishing camera images to topic: %s", topic_name_.c_str());
 
     // Initialize the service servers
-    on_off_recording_srv_ = nh_.advertiseService("on_off_recording", &CameraPublisher::OnOffRecordingCallback, this);
+    toggle_recording_srv_ = nh_.advertiseService("toggle_recording", &CameraPublisher::ToggleRecordingCallback, this);
 
     // Initialize status publisher, queue size 1 for low rate update (1 hz)
     recording_status_pub_ = nh_.advertise<std_msgs::Bool>("recording_status", 1);
@@ -87,7 +87,7 @@ void CameraPublisher::publishImage()
     ros::spinOnce();
 }
 
-bool CameraPublisher::OnOffRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
+bool CameraPublisher::ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
     if (mp4_output_folder_ == "") {
         ROS_ERROR("MP4 recording is NOT enabled! Please set the mp4_output_folder parameter.");
         res.success = false;

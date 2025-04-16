@@ -38,8 +38,8 @@ private:
     bool is_calibration_enabled_ = false;
     void loadCameraCalibration();
 
-    ros::ServiceServer on_off_recording_srv_;
-    bool OnOffRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+    ros::ServiceServer toggle_recording_srv_;
+    bool ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
 
     ros::Publisher recording_status_pub_;
 };
