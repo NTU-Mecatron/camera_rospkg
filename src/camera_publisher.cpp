@@ -27,7 +27,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
         ROS_WARN("WSL2 mode. Are you sure?");
     }
     else 
-        cap_.open(input_);
+        cap_.open(input_, cv::CAP_V4L2);
 
     if (!cap_.isOpened()) 
     {
@@ -38,19 +38,19 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
         ROS_INFO("Camera opened successfully");
 
     // Load the camera calibration parameters
-    if (calibration_yaml_path_ != "") 
-        loadCameraCalibration();
-    else 
-        ROS_WARN("Camera calibration file NOT provided!");
+    // if (calibration_yaml_path_ != "") 
+    //     loadCameraCalibration();
+    // else 
+    //     ROS_WARN("Camera calibration file NOT provided!");
 
     // Whitebalance the camera
-    if (wb_temp_ != -1) 
-    {
-        cap_.set(cv::CAP_PROP_AUTO_WB, 0);
-        cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temp_);
-        ROS_INFO("Whitebalance set to: %d", wb_temp_);
-    }
-    else cap_.set(cv::CAP_PROP_AUTO_WB, 1);
+    // if (wb_temp_ != -1) 
+    // {
+    //     cap_.set(cv::CAP_PROP_AUTO_WB, 0);
+    //     cap_.set(cv::CAP_PROP_WB_TEMPERATURE, wb_temp_);
+    //     ROS_INFO("Whitebalance set to: %d", wb_temp_);
+    // }
+    // else cap_.set(cv::CAP_PROP_AUTO_WB, 1);
 
     if (mp4_output_folder_ == "")
         ROS_WARN("MP4 recording is NOT enabled!");
