@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
 #include <std_srvs/Trigger.h>
+#include <std_srvs/SetBool.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
 #include <sensor_msgs/Image.h>
@@ -40,6 +41,10 @@ private:
 
     ros::ServiceServer toggle_recording_srv_;
     bool ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
+
+    ros::ServiceServer enable_camera_srv_;
+    bool EnableCameraCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res);
+    bool is_enabled_;
 
     ros::Publisher recording_status_pub_;
 };

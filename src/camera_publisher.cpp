@@ -10,13 +10,15 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
     nh_.param<std::string>("calibration_yaml_path", calibration_yaml_path_, "");
     nh_.param<int>("whitebalance_temperature", wb_temp_, -1);
-
+    nh_.param<bool>("default_enabled", is_enabled_, false);
+    
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
     ROS_INFO("Publishing camera images to topic: %s", topic_name_.c_str());
-
+    
     // Initialize the service servers
     toggle_recording_srv_ = nh_.advertiseService("toggle_recording", &CameraPublisher::ToggleRecordingCallback, this);
+    enable_camera_srv_ = nh_.advertiseService("cmd/enable", &CameraPublisher::EnableCameraCallback, this);
 
     // Initialize status publisher, queue size 1 for low rate update (1 hz)
     recording_status_pub_ = nh_.advertise<std_msgs::Bool>("recording_status", 1);
@@ -62,6 +64,9 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
 
 void CameraPublisher::publishImage() 
 {
+    if (!is_enabled_) 
+        return;
+
     if (is_calibration_enabled_) {
         cap_ >> raw_frame_; // Capture a frame
         cv::remap(raw_frame_, frame_, map1_, map2_, cv::INTER_LINEAR); // Undistort the frame
@@ -82,9 +87,6 @@ void CameraPublisher::publishImage()
 
     if (video_writer_.isOpened()) 
         video_writer_ << frame_; // Write the frame to the video
-
-    // Need to spin once to let the service servers work
-    ros::spinOnce();
 }
 
 bool CameraPublisher::ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
@@ -121,6 +123,20 @@ bool CameraPublisher::ToggleRecordingCallback(std_srvs::Trigger::Request &req, s
         ROS_WARN("Recording started!");
         res.success = true;
         res.message = "Recording on";
+    }
+    return true;
+}
+
+bool CameraPublisher::EnableCameraCallback(std_srvs::SetBool::Request &req, std_srvs::SetBool::Response &res) {
+    is_enabled_ = req.data;
+    if (is_enabled_) {
+        ROS_INFO("Camera publishing enabled!");
+        res.success = true;
+        res.message = "Camera publishing enabled";
+    } else {
+        ROS_INFO("Camera publishing paused!");
+        res.success = true;
+        res.message = "Camera publishing paused";
     }
     return true;
 }

@@ -8,7 +8,7 @@ int main(int argc, char** argv) {
     CameraPublisher camera_publisher(nh);
 
     int frame_rate;
-    nh.param<int>("frame_rate", frame_rate, 30);
+    nh.param<int>("frame_rate", frame_rate, 15);
     ros::Rate loop_rate(frame_rate);
 
     while (ros::ok()) 
@@ -20,6 +20,9 @@ int main(int argc, char** argv) {
             camera_publisher.publishRecordingStatus();
             last_status_pub_time = ros::Time::now();
         }
+
+        // Need to spin once to let the service servers work
+        ros::spinOnce();
 
         loop_rate.sleep();
     }
