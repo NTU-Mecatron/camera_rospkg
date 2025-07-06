@@ -3,6 +3,7 @@
 
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <std_srvs/SetBool.h>
 #include <std_srvs/Trigger.h>
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -17,6 +18,7 @@ public:
     void publishRecordingStatus();
 
 private:
+
     ros::NodeHandle nh_;
     image_transport::ImageTransport it_;
     image_transport::Publisher image_pub_;
@@ -42,6 +44,11 @@ private:
     bool ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res);
 
     ros::Publisher recording_status_pub_;
+
+    bool isPause_;
+    ros::ServiceServer pause_resume_srv_;
+    bool PauseResumeCallback(std_srvs::SetBool::Request &req, 
+                            std_srvs::SetBool::Response &res);
 };
 
 #endif // PHYSICAL_CAMERA_H

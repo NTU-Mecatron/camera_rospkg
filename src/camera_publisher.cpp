@@ -10,6 +10,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     nh_.param<std::string>("mp4_output_folder", mp4_output_folder_, "");
     nh_.param<std::string>("calibration_yaml_path", calibration_yaml_path_, "");
     nh_.param<int>("whitebalance_temperature", wb_temp_, -1);
+    nh_.param<bool>("default_enable", isPause_, false);
 
     // Initialize the publisher
     image_pub_ = it_.advertise(topic_name_, 1);
@@ -17,6 +18,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
 
     // Initialize the service servers
     toggle_recording_srv_ = nh_.advertiseService("toggle_recording", &CameraPublisher::ToggleRecordingCallback, this);
+    pause_resume_srv_ = nh_.advertiseService("camera_pause_resume", &CameraPublisher::PauseResumeCallback, this);
 
     // Initialize status publisher, queue size 1 for low rate update (1 hz)
     recording_status_pub_ = nh_.advertise<std_msgs::Bool>("recording_status", 1);
@@ -73,14 +75,16 @@ void CameraPublisher::publishImage()
         cv::waitKey(10);
     }
 
-    if (!frame_.empty()) 
+    // Only publish ROS image message if not paused
+    if (!frame_.empty() && !isPause_) 
     {
         // Convert the frame to a ROS image message
         msg_ = cv_bridge::CvImage(std_msgs::Header(), "bgr8", frame_).toImageMsg();
         image_pub_.publish(msg_);
     }
 
-    if (video_writer_.isOpened()) 
+    // Only record video if not paused
+    if (video_writer_.isOpened() && !isPause_) 
         video_writer_ << frame_; // Write the frame to the video
 
     // Need to spin once to let the service servers work
@@ -164,4 +168,22 @@ void CameraPublisher::publishRecordingStatus() {
     std_msgs::Bool status_msg;
     status_msg.data = is_recording_started_;
     recording_status_pub_.publish(status_msg);
+}
+
+bool CameraPublisher::PauseResumeCallback(std_srvs::SetBool::Request &req,
+                                         std_srvs::SetBool::Response &res)
+{
+    isPause_ = req.data;
+    
+    if (isPause_) {
+        res.success = true;
+        res.message = "Camera paused";
+        ROS_INFO("Camera publishing paused");
+    } else {
+        res.success = true;
+        res.message = "publishImage";
+        ROS_INFO("Camera publishing resumed");
+    }
+    
+    return true;
 }
