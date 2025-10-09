@@ -13,7 +13,7 @@
 
 #include <opencv2/opencv.hpp>
 
-namespace camera_driver {
+namespace camera_rospkg {
 
 // Publishes raw Image + CameraInfo, with optional undistort/rectify from YAML
 // Foxglove H.264 is provided by the installed image_transport plugin
@@ -60,4 +60,4 @@ private:
   static bool isDigits(const std::string & s);
 };
 
-} // namespace camera_driver
+} // namespace camera_rospkg

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(camera_driver)
+project(camera_rospkg)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -30,6 +30,16 @@ target_link_libraries(camera_publisher_node ${OpenCV_LIBS})
 
 install(TARGETS camera_publisher_node
   RUNTIME DESTINATION lib/${PROJECT_NAME})
+
+install(
+  DIRECTORY launch
+  DESTINATION share/${PROJECT_NAME}
+)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
