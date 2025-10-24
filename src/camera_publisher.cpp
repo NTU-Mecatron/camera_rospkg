@@ -2,6 +2,7 @@
 
 CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_) 
 {
+<<<<<<< HEAD
     // Get the topic name from the parameter server
     nh_.param<std::string>("input", input_, "/dev/video0");
     nh_.param<std::string>("topic_name", topic_name_, "/sensor/camera");
@@ -19,6 +20,16 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
     // Initialize the service servers
     toggle_recording_srv_ = nh_.advertiseService("toggle_recording", &CameraPublisher::ToggleRecordingCallback, this);
     enable_camera_srv_ = nh_.advertiseService("cmd/enable", &CameraPublisher::EnableCameraCallback, this);
+=======
+  // Declare parameters with defaults
+  device_          = declare_parameter<std::string>("device", "/dev/video4");
+  frame_id_        = declare_parameter<std::string>("frame_id", "camera_optical_frame");
+  width_           = declare_parameter<int>("width", 640);
+  height_          = declare_parameter<int>("height", 480);
+  fps_             = declare_parameter<double>("fps", 30.0);
+  rectify_         = declare_parameter<bool>("rectify", true);
+  calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
+>>>>>>> 71292ed (Switched topic names to be absolute)
 
     // Initialize status publisher, queue size 1 for low rate update (1 hz)
     recording_status_pub_ = nh_.advertise<std_msgs::Bool>("recording_status", 1);
@@ -64,6 +75,7 @@ CameraPublisher::CameraPublisher(ros::NodeHandle& nh) : nh_(nh), it_(nh_)
 
 void CameraPublisher::publishImage() 
 {
+<<<<<<< HEAD
     if (!is_enabled_) 
         return;
 
@@ -87,6 +99,15 @@ void CameraPublisher::publishImage()
 
     if (video_writer_.isOpened()) 
         video_writer_ << frame_; // Write the frame to the video
+=======
+  // Creates multiple topics with different transport if using ffmpeg plugin
+  // image_raw/ffmpeg for H.264, image_raw for raw
+  // Using relative topic names to allow for proper namespacing
+  img_pub_ = image_transport::create_publisher(this, "image_raw");
+
+  // standard CameraInfo publisher
+  cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());
+>>>>>>> 71292ed (Switched topic names to be absolute)
 }
 
 bool CameraPublisher::ToggleRecordingCallback(std_srvs::Trigger::Request &req, std_srvs::Trigger::Response &res) {
