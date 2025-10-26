@@ -30,6 +30,7 @@ def generate_launch_description():
                 'height': 720,
                 'fps': 30.0,
                 'pixel_format' : 'MJPG',
+                'io_method' : 'mmap',
                 'topCrop' : 50,
                 'bottomCrop' : 50,
                 'frame_id': 'camera_optical_frame',

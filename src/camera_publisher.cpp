@@ -17,6 +17,7 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   fps_             = declare_parameter<double>("fps", 30.0);
   rectify_         = declare_parameter<bool>("rectify", true);
   pixel_format_    = declare_parameter<std::string>("pixel_format", "MJPG");
+  io_method_      = declare_parameter<std::string>("io_method", "mmap");
   topCrop_        = declare_parameter<int>("topCrop", 50);
   bottomCrop_     = declare_parameter<int>("bottomCrop", 50);
   calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
