@@ -37,7 +37,12 @@ def generate_launch_description():
                 'frame_id': 'camera_optical_frame',
                 'rectify': True,
                 'camera_name': 'camera',
-                'calibration_url': f'file://{calib}'
+                'calibration_url': calib,  # Disable calibration for now - OpenCV format not compatible
+
+                # FFMPEG image transport parameters for foxglove
+                'ffmpeg_image_transport.encoder': 'h264_v4l2m2m', # NVIDIA hardware encoder for H264
+                'ffmpeg_image_transport.bit_rate': 10000000, # 10 Mbps
+                'ffmpeg_image_transport.gop_size': 15 # Keyframe interval
             }],
         )
     ])
