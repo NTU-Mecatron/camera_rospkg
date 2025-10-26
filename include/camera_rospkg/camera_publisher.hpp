@@ -29,6 +29,7 @@ private:
   int height_;                      // capture height
   double fps_;                      // capture fps
   bool rectify_;                    // enable undistort/rectify
+  std::string pixel_format_;
   int topCrop_;
   int bottomCrop_;
   std::string calibration_url_;     // "file:///abs/path/calibration.yaml"

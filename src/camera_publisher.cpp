@@ -16,6 +16,7 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   height_          = declare_parameter<int>("height", 480);
   fps_             = declare_parameter<double>("fps", 30.0);
   rectify_         = declare_parameter<bool>("rectify", true);
+  pixel_format_    = declare_parameter<std::string>("pixel_format", "MJPG");
   topCrop_        = declare_parameter<int>("topCrop", 50);
   bottomCrop_     = declare_parameter<int>("bottomCrop", 50);
   calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
@@ -65,6 +66,17 @@ void CameraPublisher::openCamera()
   if (!cap_.isOpened()) {
     RCLCPP_FATAL(get_logger(), "Failed to open camera device '%s'", device_.c_str());
     throw std::runtime_error("camera open failed");
+  }
+  if(!pixel_format_.empty() && pixel_format_.length() == 4) { 
+    int fourcc = cv::VideoWriter::fourcc(
+      pixel_format_[0], pixel_format_[1], pixel_format_[2], pixel_format_[3]
+    );
+    if(!cap_.set(cv::CAP_PROP_FOURCC, fourcc)) {
+      RCLCPP_WARN(get_logger(), "Failed to set pixel format '%s'", pixel_format_.c_str());
+    }
+    else{
+      RCLCPP_INFO(get_logger(), "Successfully set pixel format '%s'", pixel_format_.c_str());
+    }
   }
 
   // Best-effort property set (driver may clamp)
