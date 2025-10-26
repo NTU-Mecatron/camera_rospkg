@@ -1,10 +1,10 @@
-#include "camera_driver/camera_publisher.hpp"
+#include "camera_rospkg/camera_publisher.hpp"
 
 #include <algorithm>
 #include <string>
 #include <chrono>
 
-namespace camera_driver {
+namespace camera_rospkg {
 
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
 : rclcpp::Node("camera_publisher", options)
@@ -213,4 +213,4 @@ void CameraPublisher::timerCb()
   cinfo_pub_->publish(cinfo);
 }
 
-} // namespace camera_driver
+} // namespace camera_rospkg
