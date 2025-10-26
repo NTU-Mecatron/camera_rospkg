@@ -16,7 +16,9 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   height_          = declare_parameter<int>("height", 480);
   fps_             = declare_parameter<double>("fps", 30.0);
   rectify_         = declare_parameter<bool>("rectify", true);
-  calibration_url_ = declare_parameter<std::string>("calibration_url", "");
+  topCrop_        = declare_parameter<int>("topCrop", 50);
+  bottomCrop_     = declare_parameter<int>("bottomCrop", 50);
+  calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
 
   // CameraInfoManager needs a "camera_name" (used as namespace inside YAML)
   const std::string camera_name = declare_parameter<std::string>("camera_name", "camera");
@@ -175,7 +177,8 @@ void CameraPublisher::timerCb()
   if (rectify_ && maps_ready_) {
     cv::Mat rectified;
     cv::remap(frame, rectified, map1_, map2_, cv::INTER_LINEAR);
-    frame = rectified;
+    int newHeight_ = rectified.rows - topCrop_ - bottomCrop_;
+    frame = rectified(cv::Rect(0, topCrop_, rectified.cols, newHeight_));
   }
 
   // Compose ROS messages
