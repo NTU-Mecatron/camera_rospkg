@@ -52,10 +52,19 @@ bool CameraPublisher::isDigits(const std::string & s)
 void CameraPublisher::openCamera()
 {
   try {
+    int api_preference = cv::CAP_ANY;
+    if (io_method_ == "mmap") {
+      api_preference = cv::CAP_V4L2;
+      RCLCPP_INFO(get_logger(), "Requesting V4L2 backend for mmap I/O method.");
+    } else if (io_method_ == "read") {
+      api_preference = cv::CAP_V4L; // A basic backend that uses read()
+      RCLCPP_INFO(get_logger(), "Requesting V4L backend for read I/O method.");
+    }
+    
     if (isDigits(device_)) {
-      cap_.open(std::stoi(device_));
+      cap_.open(std::stoi(device_), api_preference);
     } else {
-      cap_.open(device_);
+      cap_.open(device_, api_preference);
     }
   } catch (const std::exception & e) {
     RCLCPP_FATAL(get_logger(), "Exception opening camera: %s", e.what());
