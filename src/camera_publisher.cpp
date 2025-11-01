@@ -16,7 +16,9 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   height_          = declare_parameter<int>("height", 480);
   fps_             = declare_parameter<double>("fps", 30.0);
   rectify_         = declare_parameter<bool>("rectify", true);
-  calibration_url_ = declare_parameter<std::string>("calibration_url", "");
+  pixel_format_    = declare_parameter<std::string>("pixel_format", "MJPG");
+  io_method_      = declare_parameter<std::string>("io_method", "mmap");
+  calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
 
   // CameraInfoManager needs a "camera_name" (used as namespace inside YAML)
   const std::string camera_name = declare_parameter<std::string>("camera_name", "camera");
@@ -50,10 +52,19 @@ bool CameraPublisher::isDigits(const std::string & s)
 void CameraPublisher::openCamera()
 {
   try {
+    int api_preference = cv::CAP_ANY;
+    if (io_method_ == "mmap") {
+      api_preference = cv::CAP_V4L2;
+      RCLCPP_INFO(get_logger(), "Requesting V4L2 backend for mmap I/O method.");
+    } else if (io_method_ == "read") {
+      api_preference = cv::CAP_V4L; // A basic backend that uses read()
+      RCLCPP_INFO(get_logger(), "Requesting V4L backend for read I/O method.");
+    }
+    
     if (isDigits(device_)) {
-      cap_.open(std::stoi(device_));
+      cap_.open(std::stoi(device_), api_preference);
     } else {
-      cap_.open(device_);
+      cap_.open(device_, api_preference);
     }
   } catch (const std::exception & e) {
     RCLCPP_FATAL(get_logger(), "Exception opening camera: %s", e.what());
@@ -64,6 +75,17 @@ void CameraPublisher::openCamera()
     RCLCPP_FATAL(get_logger(), "Failed to open camera device '%s'", device_.c_str());
     throw std::runtime_error("camera open failed");
   }
+  if(!pixel_format_.empty() && pixel_format_.length() == 4) { 
+    int fourcc = cv::VideoWriter::fourcc(
+      pixel_format_[0], pixel_format_[1], pixel_format_[2], pixel_format_[3]
+    );
+    if(!cap_.set(cv::CAP_PROP_FOURCC, fourcc)) {
+      RCLCPP_WARN(get_logger(), "Failed to set pixel format '%s'", pixel_format_.c_str());
+    }
+    else{
+      RCLCPP_INFO(get_logger(), "Successfully set pixel format '%s'", pixel_format_.c_str());
+    }
+  }
 
   // Best-effort property set (driver may clamp)
   cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
@@ -73,11 +95,13 @@ void CameraPublisher::openCamera()
 
 void CameraPublisher::setupPublishers()
 {
-  // image_transport publisher on /camera/image_raw
-  img_pub_ = image_transport::create_publisher(this, "/camera/image_raw");
+  // Creates multiple topics with different transport if using ffmpeg plugin
+  // image_raw/ffmpeg for H.264, image_raw for raw
+  // Using relative topic names to allow for proper namespacing
+  img_pub_ = image_transport::create_publisher(this, "image_raw");
 
   // standard CameraInfo publisher
-  cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("/camera/camera_info", rclcpp::SensorDataQoS());
+  cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 }
 
 void CameraPublisher::loadCalibration()
