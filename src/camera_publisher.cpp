@@ -7,7 +7,10 @@
 namespace camera_rospkg {
 
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
-: rclcpp::Node("camera_publisher", options)
+  : rclcpp::Node("camera_publisher", options),
+    nh_(std::shared_ptr<CameraPublisher>(this, [](auto *) {})),
+    it_(nh_),
+    img_pub_(it_.advertise("image", 10))
 {
   // Declare parameters with defaults
   device_          = declare_parameter<std::string>("device", "/dev/video4");
@@ -98,7 +101,7 @@ void CameraPublisher::setupPublishers()
   // Creates multiple topics with different transport if using ffmpeg plugin
   // image_raw/ffmpeg for H.264, image_raw for raw
   // Using relative topic names to allow for proper namespacing
-  img_pub_ = image_transport::create_publisher(this, "image_raw");
+  // img_pub_ = image_transport::create_publisher(this, "image_raw");
 
   // standard CameraInfo publisher
   cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());

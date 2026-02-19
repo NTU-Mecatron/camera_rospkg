@@ -25,7 +25,7 @@ def generate_launch_description():
             namespace=LaunchConfiguration('namespace'),
             output='screen',
             parameters=[{
-                'device': '/dev/video0',
+                'device': '/home/luc001/robot_ws/src/perception_bringup/videos/overall_data.mp4',
                 'width': 640,
                 'height': 480,
                 'fps': 30.0,

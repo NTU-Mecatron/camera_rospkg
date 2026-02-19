@@ -8,15 +8,14 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <image_transport/image_transport.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <camera_info_manager/camera_info_manager.hpp>
 
 #include <opencv2/opencv.hpp>
 
 namespace camera_rospkg {
 
-// Publishes raw Image + CameraInfo, with optional undistort/rectify from YAML
-// Foxglove H.264 is provided by the installed image_transport plugin
+// Publishes raw Image + compressed Image + CameraInfo, with optional undistort/rectify from YAML
 class CameraPublisher : public rclcpp::Node {
 public:
   explicit CameraPublisher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -37,6 +36,8 @@ private:
   cv::VideoCapture cap_;
 
   // Publishers
+  rclcpp::Node::SharedPtr nh_;
+  image_transport::ImageTransport it_;
   image_transport::Publisher img_pub_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr cinfo_pub_;
 
