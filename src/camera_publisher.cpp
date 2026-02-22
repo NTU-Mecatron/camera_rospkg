@@ -13,38 +13,36 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
     img_pub_(it_.advertise("image", 10))
 {
   // Declare parameters with defaults
-  device_          = declare_parameter<std::string>("device", "/dev/video4");
+  std::string device = declare_parameter<std::string>("device", "/dev/video4");
   frame_id_        = declare_parameter<std::string>("frame_id", "camera_optical_frame");
   width_           = declare_parameter<int>("width", 640);
   height_          = declare_parameter<int>("height", 480);
-  fps_             = declare_parameter<double>("fps", 30.0);
+  double fps       = declare_parameter<double>("fps", 30.0);
   rectify_         = declare_parameter<bool>("rectify", true);
-  pixel_format_    = declare_parameter<std::string>("pixel_format", "MJPG");
-  io_method_      = declare_parameter<std::string>("io_method", "mmap");
-  calibration_url_ = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
+  std::string calibration_url = declare_parameter<std::string>("calibration_url", "config/calibration.yaml");
 
   // CameraInfoManager needs a "camera_name" (used as namespace inside YAML)
   const std::string camera_name = declare_parameter<std::string>("camera_name", "camera");
   cinfo_mgr_ = std::make_unique<camera_info_manager::CameraInfoManager>(this, camera_name);
 
   // Load calibration immediately (optional if empty URL)
-  loadCalibration();
+  loadCalibration(calibration_url);
 
   // Open camera and set properties
-  openCamera();
+  openCamera(device, fps);
 
   // Create publishers (raw image + camera info)
   setupPublishers();
 
   // Periodic capture/publish timer
   using namespace std::chrono_literals;
-  const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
+  const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps));
   timer_ = create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(period),
     std::bind(&CameraPublisher::timerCb, this));
 
   RCLCPP_INFO(get_logger(), "camera_publisher started: device=%s %dx%d @ %.1fHz rectify=%s",
-              device_.c_str(), width_, height_, fps_, rectify_ ? "true" : "false");
+              device.c_str(), width_, height_, fps, rectify_ ? "true" : "false");
 }
 
 bool CameraPublisher::isDigits(const std::string & s)
@@ -52,22 +50,29 @@ bool CameraPublisher::isDigits(const std::string & s)
   return !s.empty() && std::all_of(s.begin(), s.end(), ::isdigit);
 }
 
-void CameraPublisher::openCamera()
+void CameraPublisher::openCamera(const std::string& device, double fps)
 {
+  std::string lower_device = device;
+  std::transform(lower_device.begin(), lower_device.end(), lower_device.begin(), ::tolower);
+  
+  bool is_video_file = (lower_device.length() >= 4 && (
+                        lower_device.substr(lower_device.length() - 4) == ".mp4" ||
+                        lower_device.substr(lower_device.length() - 4) == ".avi" ||
+                        lower_device.substr(lower_device.length() - 4) == ".mov"));
+
   try {
-    int api_preference = cv::CAP_ANY;
-    if (io_method_ == "mmap") {
-      api_preference = cv::CAP_V4L2;
-      RCLCPP_INFO(get_logger(), "Requesting V4L2 backend for mmap I/O method.");
-    } else if (io_method_ == "read") {
-      api_preference = cv::CAP_V4L; // A basic backend that uses read()
-      RCLCPP_INFO(get_logger(), "Requesting V4L backend for read I/O method.");
+    int api_preference = is_video_file ? cv::CAP_ANY : cv::CAP_V4L2;
+
+    if (is_video_file) {
+      RCLCPP_INFO(get_logger(), "Detected video file extension; using default backend.");
+    } else {
+      RCLCPP_INFO(get_logger(), "Requesting V4L2 backend for camera device.");
     }
     
-    if (isDigits(device_)) {
-      cap_.open(std::stoi(device_), api_preference);
+    if (isDigits(device)) {
+      cap_.open(std::stoi(device), api_preference);
     } else {
-      cap_.open(device_, api_preference);
+      cap_.open(device, api_preference);
     }
   } catch (const std::exception & e) {
     RCLCPP_FATAL(get_logger(), "Exception opening camera: %s", e.what());
@@ -75,25 +80,23 @@ void CameraPublisher::openCamera()
   }
 
   if (!cap_.isOpened()) {
-    RCLCPP_FATAL(get_logger(), "Failed to open camera device '%s'", device_.c_str());
+    RCLCPP_FATAL(get_logger(), "Failed to open camera device '%s'", device.c_str());
     throw std::runtime_error("camera open failed");
   }
-  if(!pixel_format_.empty() && pixel_format_.length() == 4) { 
-    int fourcc = cv::VideoWriter::fourcc(
-      pixel_format_[0], pixel_format_[1], pixel_format_[2], pixel_format_[3]
-    );
-    if(!cap_.set(cv::CAP_PROP_FOURCC, fourcc)) {
-      RCLCPP_WARN(get_logger(), "Failed to set pixel format '%s'", pixel_format_.c_str());
-    }
-    else{
-      RCLCPP_INFO(get_logger(), "Successfully set pixel format '%s'", pixel_format_.c_str());
-    }
-  }
 
-  // Best-effort property set (driver may clamp)
-  cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
-  cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
-  cap_.set(cv::CAP_PROP_FPS,          fps_);
+  if (!is_video_file) {
+    int fourcc = cv::VideoWriter::fourcc('M', 'J', 'P', 'G');
+    if (!cap_.set(cv::CAP_PROP_FOURCC, fourcc)) {
+      RCLCPP_WARN(get_logger(), "Failed to set pixel format to MJPG");
+    } else {
+      RCLCPP_INFO(get_logger(), "Successfully set pixel format to MJPG");
+    }
+
+    // Best-effort property set (driver may clamp)
+    cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
+    cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
+    cap_.set(cv::CAP_PROP_FPS,          fps);
+  }
 }
 
 void CameraPublisher::setupPublishers()
@@ -107,9 +110,9 @@ void CameraPublisher::setupPublishers()
   cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 }
 
-void CameraPublisher::loadCalibration()
+void CameraPublisher::loadCalibration(const std::string& calibration_url)
 {
-  if (calibration_url_.empty()) {
+  if (calibration_url.empty()) {
     RCLCPP_WARN(get_logger(), "No calibration_url provided. Publishing uncalibrated CameraInfo.");
     curr_cinfo_ = sensor_msgs::msg::CameraInfo();
     curr_cinfo_.distortion_model = "plumb_bob";
@@ -118,7 +121,7 @@ void CameraPublisher::loadCalibration()
   }
 
   // camera_info_manager expects a URL; prepend file:// if you gave a bare path
-  std::string url = calibration_url_;
+  std::string url = calibration_url;
   if (url.rfind("file://", 0) != 0 && url.rfind("package://", 0) != 0) {
     url = "file://" + url;
   }
@@ -166,9 +169,9 @@ void CameraPublisher::buildRectifyMaps()
   const cv::Size img_size(width_, height_);
 
   // Decide distortion model
-  is_fisheye_ = (curr_cinfo_.distortion_model == "equidistant");
+  bool is_fisheye = (curr_cinfo_.distortion_model == "equidistant");
 
-  if (!is_fisheye_) {
+  if (!is_fisheye) {
     // Standard pinhole ("plumb_bob")
     cv::initUndistortRectifyMap(
       K, D, R, newK, img_size, CV_32FC1, map1_, map2_);
@@ -182,7 +185,7 @@ void CameraPublisher::buildRectifyMaps()
 
   maps_ready_ = true;
   RCLCPP_INFO(get_logger(), "Rectification maps built (%s).",
-              is_fisheye_ ? "fisheye/equidistant" : "pinhole/plumb_bob");
+              is_fisheye ? "fisheye/equidistant" : "pinhole/plumb_bob");
 }
 
 void CameraPublisher::timerCb()

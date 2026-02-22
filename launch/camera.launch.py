@@ -29,8 +29,6 @@ def generate_launch_description():
                 'width': 640,
                 'height': 480,
                 'fps': 30.0,
-                'pixel_format' : 'MJPG',
-                'io_method' : 'mmap',
                 'frame_id': 'camera_optical_frame',
                 'rectify': True,
                 'camera_name': 'camera',

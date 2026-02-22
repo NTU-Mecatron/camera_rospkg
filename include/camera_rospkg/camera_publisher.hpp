@@ -22,15 +22,10 @@ public:
 
 private:
   // Parameters
-  std::string device_;              // "/dev/video0" or "0"
   std::string frame_id_;            // TF frame
   int width_;                       // capture width
   int height_;                      // capture height
-  double fps_;                      // capture fps
   bool rectify_;                    // enable undistort/rectify
-  std::string pixel_format_;
-  std::string io_method_;
-  std::string calibration_url_;     // "file:///abs/path/calibration.yaml"
 
   // Capture
   cv::VideoCapture cap_;
@@ -48,15 +43,14 @@ private:
   // Rectification maps (for plumb_bob or fisheye)
   cv::Mat map1_, map2_;
   bool maps_ready_ = false;
-  bool is_fisheye_ = false;
 
   // Timer
   rclcpp::TimerBase::SharedPtr timer_;
 
   // Methods
-  void openCamera();
+  void openCamera(const std::string& device, double fps);
   void setupPublishers();
-  void loadCalibration();
+  void loadCalibration(const std::string& calibration_url);
   void buildRectifyMaps();  // from curr_cinfo_ into map1_/map2_
   void timerCb();
 
