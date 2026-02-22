@@ -16,8 +16,15 @@ def generate_launch_description():
         description='Namespace for the camera node'
     )
 
+    device_arg = DeclareLaunchArgument(
+        'device',
+        default_value='/dev/video0',
+        description='Camera device path or video file path'
+    )
+
     return LaunchDescription([
         namespace_arg,
+        device_arg,
         Node(
             package='camera_rospkg',
             executable='camera_publisher_node',
@@ -25,7 +32,7 @@ def generate_launch_description():
             namespace=LaunchConfiguration('namespace'),
             output='screen',
             parameters=[{
-                'device': '/home/luc001/robot_ws/src/perception_bringup/videos/overall_data.mp4',
+                'device': LaunchConfiguration('device'),
                 'width': 640,
                 'height': 480,
                 'fps': 30.0,
