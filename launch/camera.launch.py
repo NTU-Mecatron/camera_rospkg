@@ -39,7 +39,7 @@ def generate_launch_description():
                 'frame_id': 'camera_optical_frame',
                 'rectify': True,
                 'camera_name': 'camera',
-                'calibration_url': calib,  # Disable calibration for now - OpenCV format not compatible
+                'calibration_url': calib,
 
                 # FFMPEG image transport parameters for foxglove
                 'ffmpeg_image_transport.encoder': 'h264_v4l2m2m', # NVIDIA hardware encoder for H264

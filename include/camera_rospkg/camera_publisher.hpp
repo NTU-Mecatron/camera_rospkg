@@ -11,7 +11,8 @@
 #include <cv_bridge/cv_bridge.h>
 #include <camera_info_manager/camera_info_manager.hpp>
 
-#include <opencv2/opencv.hpp>
+#include <opencv2/core.hpp>
+#include <opencv2/videoio.hpp>
 
 namespace camera_rospkg {
 
@@ -31,30 +32,24 @@ private:
   cv::VideoCapture cap_;
 
   // Publishers
-  rclcpp::Node::SharedPtr nh_;
-  image_transport::ImageTransport it_;
   image_transport::Publisher img_pub_;
   rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr cinfo_pub_;
 
   // Camera info / calibration
   std::unique_ptr<camera_info_manager::CameraInfoManager> cinfo_mgr_;
-  sensor_msgs::msg::CameraInfo curr_cinfo_;  // cached, updated on load
+  sensor_msgs::msg::CameraInfo curr_cinfo_;  // cached, loaded once at startup
 
   // Rectification maps (for plumb_bob or fisheye)
   cv::Mat map1_, map2_;
-  bool maps_ready_ = false;
 
   // Timer
   rclcpp::TimerBase::SharedPtr timer_;
 
   // Methods
   void openCamera(const std::string& device, double fps);
-  void setupPublishers();
   void loadCalibration(const std::string& calibration_url);
   void buildRectifyMaps();  // from curr_cinfo_ into map1_/map2_
   void timerCb();
-
-  static bool isDigits(const std::string & s);
 };
 
 } // namespace camera_rospkg

@@ -13,6 +13,7 @@ find_package(image_transport REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(camera_info_manager REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
 add_executable(camera_publisher_node
   src/main.cpp
@@ -24,9 +25,7 @@ target_include_directories(camera_publisher_node PUBLIC
   $<INSTALL_INTERFACE:include>)
 
 ament_target_dependencies(camera_publisher_node
-  rclcpp sensor_msgs image_transport cv_bridge camera_info_manager)
-
-target_link_libraries(camera_publisher_node ${OpenCV_LIBS})
+  rclcpp sensor_msgs image_transport cv_bridge camera_info_manager OpenCV rclcpp_components)
 
 install(TARGETS camera_publisher_node
   RUNTIME DESTINATION lib/${PROJECT_NAME})
