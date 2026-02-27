@@ -12,7 +12,6 @@ namespace camera_rospkg {
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   : rclcpp::Node("camera_publisher", options)
 {
-  // Declare parameters with defaults
   std::string device = declare_parameter<std::string>("device", "/dev/video4");
   frame_id_        = declare_parameter<std::string>("frame_id", "camera_optical_frame");
   width_           = declare_parameter<int>("width", 640);
@@ -30,12 +29,10 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   // Open camera and set properties
   openCamera(device, fps);
 
-  // Create publishers (raw image + camera info)
+  // Create publishers
   img_pub_ = image_transport::create_publisher(this, "image");
   cinfo_pub_ = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 
-  // Periodic capture/publish timer
-  using namespace std::chrono_literals;
   const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps));
   timer_ = create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(period),
@@ -130,7 +127,6 @@ void CameraPublisher::buildRectifyMaps()
 
   const cv::Size img_size(width_, height_);
 
-  // Decide distortion model
   bool is_fisheye = (curr_cinfo_.distortion_model == "equidistant");
 
   if (!is_fisheye) {
@@ -157,14 +153,13 @@ void CameraPublisher::timerCb()
     return;
   }
 
-  // Warn if driver returns unexpected resolution (silent resize would break calibration)
+  // Warn if driver returns unexpected resolution
   if (frame.cols != width_ || frame.rows != height_) {
     RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
       "Driver returned %dx%d, expected %dx%d. Check device settings.",
       frame.cols, frame.rows, width_, height_);
   }
 
-  // Rectify if enabled
   if (rectify_) {
     cv::Mat rectified;
     cv::remap(frame, rectified, map1_, map2_, cv::INTER_LINEAR);
@@ -181,7 +176,6 @@ void CameraPublisher::timerCb()
   auto img_msg = cv_bridge::CvImage(header, "bgr8", frame).toImageMsg();
   img_pub_.publish(img_msg);
 
-  // CameraInfo: use stored calibration; update header + size to match frame
   auto cinfo = curr_cinfo_;
   cinfo.header.stamp = stamp;
   cinfo.header.frame_id = frame_id_;
