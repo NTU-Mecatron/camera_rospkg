@@ -5,51 +5,87 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# find dependencies
+# =============================================================================
+# Find ROS 2 Dependencies
+# =============================================================================
 find_package(ament_cmake REQUIRED)
-find_package(rclcpp REQUIRED)
-find_package(sensor_msgs REQUIRED)
-find_package(image_transport REQUIRED)
-find_package(cv_bridge REQUIRED)
-find_package(camera_info_manager REQUIRED)
-find_package(OpenCV REQUIRED)
-find_package(rclcpp_components REQUIRED)
 
-add_executable(camera_publisher_node
-  src/main.cpp
+set(PACKAGE_DEPENDENCIES
+  "rclcpp"
+  "rclcpp_components"
+  "sensor_msgs"
+  "camera_info_manager"
+  "cv_bridge"
+  "image_transport"
+  "OpenCV"
+)
+
+foreach(PKGDEP IN LISTS PACKAGE_DEPENDENCIES)
+  find_package(${PKGDEP} REQUIRED)
+endforeach()
+
+# =============================================================================
+# Include Directories
+# =============================================================================
+include_directories(
+  include
+)
+
+# =============================================================================
+# Component Library
+# =============================================================================
+add_library(${PROJECT_NAME}_component SHARED
   src/camera_publisher.cpp
 )
 
-target_include_directories(camera_publisher_node PUBLIC
+target_include_directories(${PROJECT_NAME}_component PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-  $<INSTALL_INTERFACE:include>)
+  $<INSTALL_INTERFACE:include>
+)
 
-ament_target_dependencies(camera_publisher_node
-  rclcpp sensor_msgs image_transport cv_bridge camera_info_manager OpenCV rclcpp_components)
+target_link_libraries(${PROJECT_NAME}_component ${OpenCV_LIBS})
+ament_target_dependencies(${PROJECT_NAME}_component ${PACKAGE_DEPENDENCIES})
 
-install(TARGETS camera_publisher_node
-  RUNTIME DESTINATION lib/${PROJECT_NAME})
+# =============================================================================
+# Register Component
+# =============================================================================
+rclcpp_components_register_node(
+  ${PROJECT_NAME}_component
+  PLUGIN "camera_rospkg::CameraPublisher"
+  EXECUTABLE camera_publisher
+)
+
+# =============================================================================
+# Installation
+# =============================================================================
+install(
+  TARGETS ${PROJECT_NAME}_component
+  EXPORT export_${PROJECT_NAME}_component
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
 
 install(
   DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION share/${PROJECT_NAME}/launch
 )
 
 install(
   DIRECTORY config
-  DESTINATION share/${PROJECT_NAME}
+  DESTINATION share/${PROJECT_NAME}/config
 )
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  # the following line skips the linter which checks for copyrights
-  # comment the line when a copyright and license is added to all source files
-  set(ament_cmake_copyright_FOUND TRUE)
-  # the following line skips cpplint (only works in a git repo)
-  # comment the line when this package is in a git repo and when
-  # a copyright and license is added to all source files
-  set(ament_cmake_cpplint_FOUND TRUE)
-  ament_lint_auto_find_test_dependencies()
-endif()
+# =============================================================================
+# Export
+# =============================================================================
+ament_export_include_directories(include)
+ament_export_libraries(${PROJECT_NAME}_component)
+ament_export_dependencies(${PACKAGE_DEPENDENCIES})
 
 ament_package()
