@@ -12,24 +12,18 @@ find_package(ament_cmake REQUIRED)
 
 set(PACKAGE_DEPENDENCIES
   "rclcpp"
+  "rclcpp_lifecycle"
   "rclcpp_components"
   "sensor_msgs"
-  "camera_info_manager"
   "cv_bridge"
-  "image_transport"
   "OpenCV"
 )
+
+find_package(yaml-cpp REQUIRED)
 
 foreach(PKGDEP IN LISTS PACKAGE_DEPENDENCIES)
   find_package(${PKGDEP} REQUIRED)
 endforeach()
-
-# =============================================================================
-# Include Directories
-# =============================================================================
-include_directories(
-  include
-)
 
 # =============================================================================
 # Component Library
@@ -43,7 +37,7 @@ target_include_directories(${PROJECT_NAME}_component PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(${PROJECT_NAME}_component ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME}_component ${OpenCV_LIBS} yaml-cpp)
 ament_target_dependencies(${PROJECT_NAME}_component ${PACKAGE_DEPENDENCIES})
 
 # =============================================================================
@@ -60,7 +54,6 @@ rclcpp_components_register_node(
 # =============================================================================
 install(
   TARGETS ${PROJECT_NAME}_component
-  EXPORT export_${PROJECT_NAME}_component
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
@@ -82,10 +75,16 @@ install(
 )
 
 # =============================================================================
+# Testing
+# =============================================================================
+if(BUILD_TESTING)
+  find_package(ament_lint_auto REQUIRED)
+  ament_lint_auto_find_test_dependencies()
+endif()
+
+# =============================================================================
 # Export
 # =============================================================================
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME}_component)
 ament_export_dependencies(${PACKAGE_DEPENDENCIES})
 
 ament_package()

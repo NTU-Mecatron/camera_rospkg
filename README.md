@@ -1,64 +1,50 @@
 # camera_rospkg
 
-This ROS 2 package provides a node to capture video from a standard USB camera (e.g., V4L2 devices on Linux). It publishes the video as `sensor_msgs/msg/Image` topics and `sensor_msgs/msg/CameraInfo`, with support for camera calibration, image rectification, and compressed video transport.
+`camera_rospkg` provides a ROS 2 lifecycle camera publisher built as a reusable component and launched in a `ComposableNodeContainer`.
 
 ## Features
 
--   Captures from USB cameras specified by device path (e.g., `/dev/video0`) or index.
--   Publishes raw images via `image_transport`, allowing for various transport plugins.
--   Publishes `sensor_msgs/msg/CameraInfo` synchronized with the image stream.
--   Loads camera calibration data from a `.yaml` file using `camera_info_manager`.
--   Performs image rectification for both standard (`plumb_bob`) and fisheye (`equidistant`) lens models.
--   Configurable via ROS parameters for resolution, frame rate, pixel format, and more.
+- Lifecycle-managed `image_raw`, `image_raw/compressed`, and `camera_info` publishers.
+- Standard lifecycle behavior: `configure` opens the device, `activate` starts publishing, `deactivate` pauses publishing, `cleanup` releases camera and calibration resources.
+- `unique_ptr` publishing for raw images, JPEG-compressed images, and camera info messages.
+- Subscriber-aware capture loop that skips frame acquisition when no normal or intra-process subscribers are present.
+- Rectification support from a calibration YAML file.
 
-## Dependencies
+## Runtime Mode
 
-To use this package, you need to install the following ROS 2 and system dependencies:
+- `ros2 launch camera_rospkg camera.launch.py`
+  Runs the camera as a composable node inside a single-threaded component container with `use_intra_process_comms:=true` by default.
 
-```bash
-sudo apt update
-sudo apt install ros-humble-image-transport
-sudo apt install ros-humble-camera-info-manager
-sudo apt install ros-humble-cv-bridge
-sudo apt install libopencv-dev
-```
+The launch path autostarts internally. The node configures and activates itself once the executor starts spinning.
 
-## Building
+## Launch Scripts
 
-To build the package, navigate to your workspace root and run `colcon build`:
+Use this when composing the camera with other nodes in the same process:
 
 ```bash
-# From your workspace root (e.g., ~/auv_ws_bk)
-colcon build --packages-select camera_rospkg
+ros2 launch camera_rospkg camera.launch.py
 ```
 
-## Usage
-
-Source your workspace and run the provided launch file. You can specify a namespace for the node.
+Example with a custom device and namespace:
 
 ```bash
-# Source the workspace
-source install/setup.bash
-
-# Launch the camera node
-ros2 launch camera_rospkg camera.launch.py namespace:=my_camera
+ros2 launch camera_rospkg camera.launch.py \
+  namespace:=front_camera \
+  device:=/dev/video0
 ```
 
-The node will start publishing topics under the specified namespace (e.g., `/my_camera/image_raw` and `/my_camera/camera_info`).
+## Common Launch Arguments
 
-### Parameters
+- `namespace`: Namespace for the camera topics and node.
+- `device`: Camera device path or numeric index.
+- `width`, `height`, `fps`: Requested capture settings.
+- `frame_id`: Frame ID stamped into outgoing messages.
+- `rectify`: Enable or disable rectification.
+- `calibration_url`: Path to the calibration YAML file.
+The composable launch also accepts `use_intra_process_comms`, defaulting to `true`.
 
-The node's behavior can be configured through parameters in the [`launch/camera.launch.py`](launch/camera.launch.py) file or via the command line. Key parameters include:
+## Notes
 
--   `device`: Camera device path (e.g., `'/dev/video0'`).
--   `width`, `height`: Capture resolution.
--   `fps`: Capture frame rate.
--   `rectify`: Set to `True` to enable image rectification.
--   `calibration_url`: Path to the camera calibration file.
--   `pixel_format`: The desired pixel format (e.g., `'MJPG'`).
-
-## Topics Published
-
--   `image_raw` (`sensor_msgs/msg/Image`): The raw or rectified image stream.
--   `camera_info` (`sensor_msgs/msg/CameraInfo`): The corresponding camera calibration information.
--   `image_raw/compressed` (`sensor_msgs/msg/CompressedVideo`): H.264 compressed video stream 
+- Zero-copy is best-effort. The `unique_ptr` publish path and `use_intra_process_comms:=true` help local composed pipelines, but actual zero-copy still depends on the subscriber path and middleware capabilities.
+- `image_raw/compressed` is published as `sensor_msgs/msg/CompressedImage` encoded with OpenCV JPEG compression.
+- After startup, the node still supports normal lifecycle transitions such as `deactivate`, `cleanup`, and `activate` if a higher-level system wants to manage it later.
