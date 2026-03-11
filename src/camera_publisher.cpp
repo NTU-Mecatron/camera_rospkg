@@ -26,11 +26,6 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   declare_parameter<double>("fps", 30.0);
   declare_parameter<bool>("rectify", true);
   declare_parameter<std::string>("calibration_url", "");
-
-  // Autostart once the executor is spinning so the shipped launch files can stay simple.
-  startup_timer_ = create_wall_timer(
-    std::chrono::milliseconds(100),
-    [this]() { startupCb(); });
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifecycle::State &)
@@ -73,7 +68,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
     return CallbackReturn::FAILURE;
   }
 
-  activatePublishers();
+  img_pub_->on_activate(); compressed_pub_->on_activate(); cinfo_pub_->on_activate();
   const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
   timer_ = create_wall_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(period),
@@ -88,25 +83,28 @@ CameraPublisher::CallbackReturn CameraPublisher::on_deactivate(const rclcpp_life
   (void)state;
 
   timer_.reset();
-  deactivatePublishers();
+  img_pub_->on_deactivate(); compressed_pub_->on_deactivate(); cinfo_pub_->on_deactivate();
   RCLCPP_INFO(get_logger(), "Deactivated: publishing paused.");
   return CallbackReturn::SUCCESS;
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_cleanup(const rclcpp_lifecycle::State &)
 {
-  teardown(); RCLCPP_INFO(get_logger(), "Cleaned up."); return CallbackReturn::SUCCESS;
+  teardown(); 
+  RCLCPP_INFO(get_logger(), "Cleaned up."); 
+  return CallbackReturn::SUCCESS;
 }
 
-CameraPublisher::CallbackReturn CameraPublisher::on_shutdown(const rclcpp_lifecycle::State &)
+CameraPublisher::CallbackReturn CameraPublisher::on_shutdown(const rclcpp_lifecycle::State & state)
 {
-  teardown(); RCLCPP_INFO(get_logger(), "Shut down."); return CallbackReturn::SUCCESS;
+  teardown();
+  RCLCPP_INFO(get_logger(), "Shut down from state: %s", state.label().c_str());
+  return CallbackReturn::SUCCESS;
 }
 
 void CameraPublisher::teardown()
 {
   timer_.reset();
-  startup_timer_.reset();
   img_pub_.reset();
   compressed_pub_.reset();
   cinfo_pub_.reset();
@@ -114,40 +112,6 @@ void CameraPublisher::teardown()
   curr_cinfo_ = sensor_msgs::msg::CameraInfo{};
   map1_ = cv::Mat{};
   map2_ = cv::Mat{};
-}
-
-void CameraPublisher::startupCb()
-{
-  startup_timer_.reset();
-
-  if (get_current_state().label() != "unconfigured") {
-    return;
-  }
-
-  RCLCPP_INFO(get_logger(), "Autostarting lifecycle node.");
-
-  CallbackReturn cb_return = CallbackReturn::SUCCESS;
-
-  try {
-    const auto & configured_state = configure(cb_return);
-    if (cb_return != CallbackReturn::SUCCESS) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "Autostart configure failed. Current state: %s",
-        configured_state.label().c_str());
-      return;
-    }
-
-    const auto & activated_state = activate(cb_return);
-    if (cb_return != CallbackReturn::SUCCESS) {
-      RCLCPP_ERROR(
-        get_logger(),
-        "Autostart activate failed. Current state: %s",
-        activated_state.label().c_str());
-    }
-  } catch (const std::exception & e) {
-    RCLCPP_ERROR(get_logger(), "Autostart failed: %s", e.what());
-  }
 }
 
 void CameraPublisher::openCamera()
@@ -331,16 +295,6 @@ void CameraPublisher::timerCb()
     cinfo->height = static_cast<uint32_t>(frame.rows);
     cinfo_pub_->publish(std::move(cinfo));
   }
-}
-
-void CameraPublisher::activatePublishers()
-{
-  img_pub_->on_activate(); compressed_pub_->on_activate(); cinfo_pub_->on_activate();
-}
-
-void CameraPublisher::deactivatePublishers()
-{
-  img_pub_->on_deactivate(); compressed_pub_->on_deactivate(); cinfo_pub_->on_deactivate();
 }
 
 } // namespace camera_rospkg

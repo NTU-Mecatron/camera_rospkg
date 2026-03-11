@@ -60,15 +60,11 @@ private:
 
   // Timer
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::TimerBase::SharedPtr startup_timer_;
 
   // Helpers
   void loadCalibration(const std::string & calibration_url);
   void openCamera();
   void buildRectifyMaps();
-  void activatePublishers();
-  void deactivatePublishers();
-  void startupCb();
   void timerCb();
   void teardown();  // shared cleanup logic
 };

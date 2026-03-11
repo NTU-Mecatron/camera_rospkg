@@ -15,11 +15,11 @@
 - `ros2 launch camera_rospkg camera.launch.py`
   Runs the camera as a composable node inside a single-threaded component container with `use_intra_process_comms:=true` by default.
 
-The launch path autostarts internally. The node configures and activates itself once the executor starts spinning.
+The launch file autostarts the lifecycle node by default by issuing `configure` and `activate` transitions after the component is loaded.
 
 ## Lifecycle Control
 
-The node autostarts on launch, so it should already be `active` in normal use.
+The node autostarts on launch by default, so it should already be `active` in normal use. Set `autostart:=false` if you want to manage lifecycle transitions yourself.
 
 For manual lifecycle control:
 
@@ -48,9 +48,16 @@ ros2 launch camera_rospkg camera.launch.py \
   device:=/dev/video0
 ```
 
+Launch without autostart:
+
+```bash
+ros2 launch camera_rospkg camera.launch.py autostart:=false
+```
+
 ## Common Launch Arguments
 
 - `namespace`: Namespace for the camera topics and node.
+- `autostart`: Automatically run `configure` and `activate` after launch.
 - `device`: Camera device path or numeric index.
 - `width`, `height`, `fps`: Requested capture settings.
 - `frame_id`: Frame ID stamped into outgoing messages.

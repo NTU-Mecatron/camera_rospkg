@@ -1,10 +1,12 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, TimerAction
+from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import ComposableNodeContainer
+from launch_ros.actions import ComposableNodeContainer, LifecycleTransition
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
+from lifecycle_msgs.msg import Transition
 import os
 
 
@@ -12,28 +14,19 @@ def generate_launch_description():
     pkg_share = get_package_share_directory("camera_rospkg")
     default_calibration = os.path.join(pkg_share, "config", "calibration.yaml")
 
-    namespace = LaunchConfiguration("namespace")
-    device = LaunchConfiguration("device")
-    width = LaunchConfiguration("width")
-    height = LaunchConfiguration("height")
-    fps = LaunchConfiguration("fps")
-    frame_id = LaunchConfiguration("frame_id")
-    rectify = LaunchConfiguration("rectify")
-    calibration_url = LaunchConfiguration("calibration_url")
-
     camera_parameters = [{
-        "device": device,
-        "frame_id": frame_id,
-        "width": ParameterValue(width, value_type=int),
-        "height": ParameterValue(height, value_type=int),
-        "fps": ParameterValue(fps, value_type=float),
-        "rectify": ParameterValue(rectify, value_type=bool),
-        "calibration_url": calibration_url,
+        "device": ParameterValue(LaunchConfiguration("device"), value_type=str),
+        "frame_id": ParameterValue(LaunchConfiguration("frame_id"), value_type=str),
+        "width": ParameterValue(LaunchConfiguration("width"), value_type=int),
+        "height": ParameterValue(LaunchConfiguration("height"), value_type=int),
+        "fps": ParameterValue(LaunchConfiguration("fps"), value_type=float),
+        "rectify": ParameterValue(LaunchConfiguration("rectify"), value_type=bool),
+        "calibration_url": ParameterValue(LaunchConfiguration("calibration_url"), value_type=str),
     }]
 
     container = ComposableNodeContainer(
         name="camera_container",
-        namespace=namespace,
+        namespace=LaunchConfiguration("namespace"),
         package="rclcpp_components",
         executable="component_container",
         composable_node_descriptions=[
@@ -48,11 +41,28 @@ def generate_launch_description():
         output="screen",
     )
 
+    autostart = TimerAction(
+        period=1.0,
+        condition=IfCondition(LaunchConfiguration("autostart")),
+        actions=[
+            LifecycleTransition(
+                lifecycle_node_names=[[LaunchConfiguration("namespace"), "/camera_publisher"]],
+                transition_ids=[Transition.TRANSITION_CONFIGURE, Transition.TRANSITION_ACTIVATE],
+            )
+        ],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument(
             "namespace",
             default_value="camera",
             description="Namespace for the camera container and camera topics.",
+        ),
+        DeclareLaunchArgument(
+            "autostart",
+            default_value="true",
+            choices=["true", "false"],
+            description="Automatically configure and activate the lifecycle node after launch.",
         ),
         DeclareLaunchArgument(
             "device",
@@ -91,4 +101,5 @@ def generate_launch_description():
             description="Calibration YAML file path.",
         ),
         container,
+        autostart,
     ])
