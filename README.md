@@ -24,10 +24,10 @@ The node autostarts on launch by default, so it should already be `active` in no
 For manual lifecycle control:
 
 ```bash
-ros2 lifecycle get /camera/camera_publisher
-ros2 lifecycle set /camera/camera_publisher deactivate
-ros2 lifecycle set /camera/camera_publisher activate
-ros2 lifecycle set /camera/camera_publisher cleanup
+ros2 lifecycle get /camera_rospkg/camera_publisher
+ros2 lifecycle set /camera_rospkg/camera_publisher deactivate
+ros2 lifecycle set /camera_rospkg/camera_publisher activate
+ros2 lifecycle set /camera_rospkg/camera_publisher cleanup
 ```
 
 `deactivate` stops publishing but keeps the node alive. `cleanup` releases the camera and publishers to free resources. After `cleanup`, run `configure` and then `activate` to start again.
@@ -39,6 +39,8 @@ Use this when composing the camera with other nodes in the same process:
 ```bash
 ros2 launch camera_rospkg camera.launch.py
 ```
+
+This launches under the default namespace `/camera_rospkg`.
 
 Example with a custom device and namespace:
 
@@ -58,12 +60,10 @@ ros2 launch camera_rospkg camera.launch.py autostart:=false
 
 - `namespace`: Namespace for the camera topics and node.
 - `autostart`: Automatically run `configure` and `activate` after launch.
-- `device`: Camera device path or numeric index.
-- `width`, `height`, `fps`: Requested capture settings.
-- `frame_id`: Frame ID stamped into outgoing messages.
-- `rectify`: Enable or disable rectification.
-- `calibration_url`: Path to the calibration YAML file.
+- `device`: Camera device path or video file path to use before lifecycle `configure`.
 The composable launch also accepts `use_intra_process_comms`, defaulting to `true`.
+
+Camera settings such as `width`, `height`, `fps`, `frame_id`, and `rectify` remain regular node parameters with defaults declared in [`src/camera_publisher.cpp`](src/camera_publisher.cpp). `device` stays as a launch argument because it must be correct before the launch-driven lifecycle `configure` step runs. The launch file also sets `calibration_url` to the packaged calibration YAML.
 
 ## Notes
 
