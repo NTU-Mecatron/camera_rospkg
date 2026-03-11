@@ -17,6 +17,21 @@
 
 The launch path autostarts internally. The node configures and activates itself once the executor starts spinning.
 
+## Lifecycle Control
+
+The node autostarts on launch, so it should already be `active` in normal use.
+
+For manual lifecycle control:
+
+```bash
+ros2 lifecycle get /camera/camera_publisher
+ros2 lifecycle set /camera/camera_publisher deactivate
+ros2 lifecycle set /camera/camera_publisher activate
+ros2 lifecycle set /camera/camera_publisher cleanup
+```
+
+`deactivate` stops publishing but keeps the node alive. `cleanup` releases the camera and publishers to free resources. After `cleanup`, run `configure` and then `activate` to start again.
+
 ## Launch Scripts
 
 Use this when composing the camera with other nodes in the same process:
