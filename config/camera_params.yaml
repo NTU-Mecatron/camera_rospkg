@@ -7,5 +7,3 @@
     fps:             30.0
     rectify:         true                       # apply undistort/remap using calibration
     calibration_url: ""                         # absolute path to calib YAML
-
-autostart: true                                 # automatically start the node when the launch file is run

@@ -25,7 +25,6 @@ All node parameters live in [`config/camera_params.yaml`](config/camera_params.y
 | `fps` | `30.0` | Capture framerate |
 | `rectify` | `true` | Apply undistort/remap using calibration |
 | `calibration_url` | `""` | Absolute path to calibration YAML; empty = use package default |
-| `autostart` | `true` | *(launch script only)* auto configure + activate after launch |
 
 Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
@@ -47,11 +46,11 @@ With a custom namespace:
 ros2 launch camera_rospkg camera.launch.py namespace:=front_camera
 ```
 
-> **Note:** if you change `namespace`, update the top-level key in your params YAML to match: `/<namespace>/camera_publisher`.
+> **Note:** the default params file uses the top-level key `/camera_rospkg/camera_publisher`. If you change `namespace`, update the top-level key in your params YAML to match `/<namespace>/camera_publisher` instead.
 
 ## Lifecycle Control
 
-The node autostarts by default (`autostart: true` in `camera_params.yaml`).
+The node configures and activates by default when launched.
 
 ```bash
 ros2 lifecycle get /camera_rospkg/camera_publisher
