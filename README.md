@@ -1,64 +1,60 @@
 # camera_rospkg
 
-This ROS 2 package provides a node to capture video from a standard USB camera (e.g., V4L2 devices on Linux). It publishes the video as `sensor_msgs/msg/Image` topics and `sensor_msgs/msg/CameraInfo`, with support for camera calibration, image rectification, and compressed video transport.
+ROS 2 lifecycle camera publisher as a composable node.
 
-## Features
+## Published Topics
 
--   Captures from USB cameras specified by device path (e.g., `/dev/video0`) or index.
--   Publishes raw images via `image_transport`, allowing for various transport plugins.
--   Publishes `sensor_msgs/msg/CameraInfo` synchronized with the image stream.
--   Loads camera calibration data from a `.yaml` file using `camera_info_manager`.
--   Performs image rectification for both standard (`plumb_bob`) and fisheye (`equidistant`) lens models.
--   Configurable via ROS parameters for resolution, frame rate, pixel format, and more.
+| Topic | Type | Description |
+|---|---|---|
+| `/<ns>/camera_publisher/image_raw` | `sensor_msgs/msg/Image` | BGR8 raw or rectified frame |
+| `/<ns>/camera_publisher/image_raw/compressed` | `sensor_msgs/msg/CompressedImage` | JPEG-compressed frame |
+| `/<ns>/camera_publisher/camera_info` | `sensor_msgs/msg/CameraInfo` | Calibration info, timestamped with each frame |
 
-## Dependencies
+Default namespace `<ns>` is `camera_rospkg`.
 
-To use this package, you need to install the following ROS 2 and system dependencies:
+## Configuration
 
-```bash
-sudo apt update
-sudo apt install ros-humble-image-transport
-sudo apt install ros-humble-camera-info-manager
-sudo apt install ros-humble-cv-bridge
-sudo apt install libopencv-dev
-```
+All node parameters live in [`config/camera_params.yaml`](config/camera_params.yaml):
 
-## Building
+| Parameter | Default | Description |
+|---|---|---|
+| `device` | `/dev/video0` | V4L2 device path, index, or video file |
+| `frame_id` | `camera_optical_frame` | TF frame stamped on messages |
+| `width` | `640` | Capture width (px) |
+| `height` | `480` | Capture height (px) |
+| `fps` | `30.0` | Capture framerate |
+| `rectify` | `true` | Apply undistort/remap using calibration |
+| `calibration_url` | `""` | Absolute path to calibration YAML; empty = use package default |
 
-To build the package, navigate to your workspace root and run `colcon build`:
+Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
-```bash
-# From your workspace root (e.g., ~/auv_ws_bk)
-colcon build --packages-select camera_rospkg
-```
-
-## Usage
-
-Source your workspace and run the provided launch file. You can specify a namespace for the node.
+## Launch
 
 ```bash
-# Source the workspace
-source install/setup.bash
-
-# Launch the camera node
-ros2 launch camera_rospkg camera.launch.py namespace:=my_camera
+ros2 launch camera_rospkg camera.launch.py
 ```
 
-The node will start publishing topics under the specified namespace (e.g., `/my_camera/image_raw` and `/my_camera/camera_info`).
+With a custom params file (e.g. when used inside a larger package):
 
-### Parameters
+```bash
+ros2 launch camera_rospkg camera.launch.py params_file:=/path/to/my_camera.yaml
+```
 
-The node's behavior can be configured through parameters in the [`launch/camera.launch.py`](launch/camera.launch.py) file or via the command line. Key parameters include:
+With a custom namespace:
 
--   `device`: Camera device path (e.g., `'/dev/video0'`).
--   `width`, `height`: Capture resolution.
--   `fps`: Capture frame rate.
--   `rectify`: Set to `True` to enable image rectification.
--   `calibration_url`: Path to the camera calibration file.
--   `pixel_format`: The desired pixel format (e.g., `'MJPG'`).
+```bash
+ros2 launch camera_rospkg camera.launch.py namespace:=front_camera
+```
 
-## Topics Published
+> **Note:** the default params file uses the top-level key `/camera_rospkg/camera_publisher`. If you change `namespace`, update the top-level key in your params YAML to match `/<namespace>/camera_publisher` instead.
 
--   `image_raw` (`sensor_msgs/msg/Image`): The raw or rectified image stream.
--   `camera_info` (`sensor_msgs/msg/CameraInfo`): The corresponding camera calibration information.
--   `image_raw/compressed` (`sensor_msgs/msg/CompressedVideo`): H.264 compressed video stream 
+## Lifecycle Control
+
+The node configures and activates by default when launched.
+
+```bash
+ros2 lifecycle get /camera_rospkg/camera_publisher
+ros2 lifecycle set /camera_rospkg/camera_publisher deactivate   # pause publishing
+ros2 lifecycle set /camera_rospkg/camera_publisher activate     # resume
+ros2 lifecycle set /camera_rospkg/camera_publisher cleanup      # release camera
+```

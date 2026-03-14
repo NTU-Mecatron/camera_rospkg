@@ -3,20 +3,20 @@
 <package format="3">
   <name>camera_rospkg</name>
   <version>0.1.0</version>
-  <description>USB camera -> Image + CameraInfo with rectification; Foxglove H.264 via transport plugin</description>
+  <description>Lifecycle-aware USB camera publisher component with raw, compressed, and camera info outputs.</description>
   <maintainer email="alvinwm0523@gmail.com">wei_ming</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>sensor_msgs</depend>
-  <depend>image_transport</depend>
   <depend>cv_bridge</depend>
-  <depend>camera_info_manager</depend>
-  <depend>opencv</depend>
-
-  <exec_depend>foxglove_compressed_video_transport</exec_depend>
+  <depend>rclcpp_components</depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
