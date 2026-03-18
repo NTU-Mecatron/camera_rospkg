@@ -1,7 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableLifecycleNode
@@ -39,14 +39,22 @@ def generate_launch_description():
         if LaunchConfiguration("autostart").perform(context).strip().lower() != "true":
             return []
 
-        configure_cmd = ExecuteProcess(
-            cmd=["ros2", "lifecycle", "set", full_node_name, "configure"], output="screen")
-        activate_cmd = ExecuteProcess(
-            cmd=["ros2", "lifecycle", "set", full_node_name, "activate"], output="screen")
+        lifecycle_cmd = (
+            f'until ros2 lifecycle set {full_node_name} configure; do '
+            'echo "Waiting for configure service..."; '
+            'sleep 1; '
+            'done; '
+            f'until ros2 lifecycle set {full_node_name} activate; do '
+            'echo "Waiting for activate service..."; '
+            'sleep 1; '
+            'done'
+        )
 
         return [
-            TimerAction(period=2.0, actions=[configure_cmd]),
-            TimerAction(period=4.0, actions=[activate_cmd]),
+            ExecuteProcess(
+                cmd=["bash", "-lc", lifecycle_cmd],
+                output="screen",
+            ),
         ]
 
     return LaunchDescription([
