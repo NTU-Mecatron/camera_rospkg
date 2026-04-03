@@ -46,9 +46,9 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
     return CallbackReturn::FAILURE;
   }
 
-  img_pub_        = create_publisher<sensor_msgs::msg::Image>("image_raw", rclcpp::SensorDataQoS());
-  compressed_pub_ = create_publisher<sensor_msgs::msg::CompressedImage>("image_raw/compressed", rclcpp::SensorDataQoS());
-  cinfo_pub_      = create_publisher<sensor_msgs::msg::CameraInfo>("camera_info", rclcpp::SensorDataQoS());
+  img_pub_        = create_publisher<Image>("image/raw", rclcpp::SensorDataQoS());
+  compressed_pub_ = create_publisher<CompressedImage>("image/compressed", rclcpp::SensorDataQoS());
+  cinfo_pub_      = create_publisher<CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 
   RCLCPP_INFO(get_logger(), "Configured: device=%s %dx%d @ %.1fHz rectify=%s",
     device_.c_str(), width_, height_, fps_, rectify_ ? "true" : "false");
@@ -109,7 +109,7 @@ void CameraPublisher::teardown()
   compressed_pub_.reset();
   cinfo_pub_.reset();
   cap_.release();
-  curr_cinfo_ = sensor_msgs::msg::CameraInfo{};
+  curr_cinfo_ = CameraInfo{};
   map1_ = cv::Mat{};
   map2_ = cv::Mat{};
 }
@@ -150,7 +150,7 @@ void CameraPublisher::loadCalibration(const std::string& calibration_url)
 {
   if (calibration_url.empty()) {
     RCLCPP_WARN(get_logger(), "No calibration_url provided. Publishing uncalibrated CameraInfo.");
-    curr_cinfo_ = sensor_msgs::msg::CameraInfo{};
+    curr_cinfo_ = CameraInfo{};
     curr_cinfo_.distortion_model = "plumb_bob";
     curr_cinfo_.d.resize(5, 0.0);
     return;
@@ -171,7 +171,7 @@ void CameraPublisher::loadCalibration(const std::string& calibration_url)
   try {
     YAML::Node yaml = YAML::LoadFile(path);
 
-    curr_cinfo_ = sensor_msgs::msg::CameraInfo{};
+    curr_cinfo_ = CameraInfo{};
     curr_cinfo_.width  = yaml["image_width"].as<uint32_t>();
     curr_cinfo_.height = yaml["image_height"].as<uint32_t>();
     curr_cinfo_.distortion_model = yaml["distortion_model"].as<std::string>();
@@ -273,7 +273,7 @@ void CameraPublisher::timerCb()
   header.frame_id = frame_id_;
 
   if (has_raw_sub) {
-    auto msg = std::make_unique<sensor_msgs::msg::Image>();
+    auto msg = std::make_unique<Image>();
     cv_bridge::CvImage(header, "bgr8", frame).toImageMsg(*msg);
     img_pub_->publish(std::move(msg));
   }
@@ -281,7 +281,7 @@ void CameraPublisher::timerCb()
   if (has_compressed_sub) {
     std::vector<uint8_t> buf;
     cv::imencode(".jpg", frame, buf);
-    auto cmsg = std::make_unique<sensor_msgs::msg::CompressedImage>();
+    auto cmsg = std::make_unique<CompressedImage>();
     cmsg->header = header;
     cmsg->format = "jpeg";
     cmsg->data   = std::move(buf);
@@ -289,7 +289,7 @@ void CameraPublisher::timerCb()
   }
 
   if (has_cinfo_sub) {
-    auto cinfo = std::make_unique<sensor_msgs::msg::CameraInfo>(curr_cinfo_);
+    auto cinfo = std::make_unique<CameraInfo>(curr_cinfo_);
     cinfo->header = header;
     cinfo->width  = static_cast<uint32_t>(frame.cols);
     cinfo->height = static_cast<uint32_t>(frame.rows);
