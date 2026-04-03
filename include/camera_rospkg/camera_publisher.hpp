@@ -21,6 +21,8 @@
 
 namespace camera_rospkg {
 
+using namespace sensor_msgs::msg;
+
 // Lifecycle node: configure = open camera + create publishers; activate = start timer; deactivate = stop timer.
 class CameraPublisher : public rclcpp_lifecycle::LifecycleNode {
 public:
@@ -48,12 +50,12 @@ private:
   cv::VideoCapture cap_;
 
   // Publishers (lifecycle-managed)
-  rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::Image>::SharedPtr img_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::CompressedImage>::SharedPtr compressed_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<sensor_msgs::msg::CameraInfo>::SharedPtr cinfo_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<Image>::SharedPtr img_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<CompressedImage>::SharedPtr compressed_pub_;
+  rclcpp_lifecycle::LifecyclePublisher<CameraInfo>::SharedPtr cinfo_pub_;
 
   // Camera info / calibration
-  sensor_msgs::msg::CameraInfo curr_cinfo_;
+  CameraInfo curr_cinfo_;
 
   // Rectification maps (for plumb_bob or fisheye)
   cv::Mat map1_, map2_;

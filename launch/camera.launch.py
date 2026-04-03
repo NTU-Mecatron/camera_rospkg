@@ -1,14 +1,15 @@
-import os
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, OpaqueFunction, TimerAction
-from launch.substitutions import LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableLifecycleNode
 
 
 def generate_launch_description():
-    pkg_share = get_package_share_directory("camera_rospkg")
+    config_dir = PathJoinSubstitution([FindPackageShare('camera_rospkg'), 'config'])
+    config_file = PathJoinSubstitution([config_dir, 'camera_params.yaml'])
+    calibration_file = PathJoinSubstitution([config_dir, 'calibration.yaml'])
 
     container = ComposableNodeContainer(
         name="camera_container",
@@ -22,8 +23,8 @@ def generate_launch_description():
                 name="camera_publisher",
                 namespace=LaunchConfiguration("namespace"),
                 parameters=[
-                    LaunchConfiguration("params_file"),
-                    {"calibration_url": os.path.join(pkg_share, "config", "calibration.yaml")},
+                    config_file,
+                    {"calibration_url": calibration_file},
                 ],
                 extra_arguments=[{"use_intra_process_comms": True}],
                 autostart=False,
@@ -52,13 +53,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument(
             "namespace",
-            default_value="camera_rospkg",
-            description="Namespace for the camera lifecycle node. Defaults to 'camera_rospkg'."
-        ),
-        DeclareLaunchArgument(
-            "params_file",
-            default_value=os.path.join(pkg_share, "config", "camera_params.yaml"),
-            description="Path to a ROS2 params YAML file for the camera node. Defaults to config/camera_params.yaml."
+            default_value="camera",
+            description="Namespace for the camera lifecycle node."
         ),
         DeclareLaunchArgument(
             "autostart",

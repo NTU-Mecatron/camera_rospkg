@@ -1,7 +1,1 @@
-build/
-install/
-log/
-.colcon*
-.vscode/
-*.pyc
-__pycache__/
+*/mp4
