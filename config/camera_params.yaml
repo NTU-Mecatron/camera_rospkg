@@ -1,7 +1,7 @@
 /**/camera_publisher:
   ros__parameters:
     device:          "/dev/video0"              # /dev/videoX, index, or video file path
-    frame_id:        "camera_link"
+    frame_id:        "camera_optical_frame"
     width:           640
     height:          480
     fps:             30.0
