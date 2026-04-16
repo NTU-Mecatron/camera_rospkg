@@ -70,7 +70,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
 
   img_pub_->on_activate(); compressed_pub_->on_activate(); cinfo_pub_->on_activate();
   const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
-  timer_ = create_wall_timer(
+  timer_ = create_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(period),
     [this]() { timerCb(); });
 
