@@ -9,7 +9,6 @@ from launch_ros.descriptions import ComposableLifecycleNode
 def generate_launch_description():
     config_dir = PathJoinSubstitution([FindPackageShare('camera_rospkg'), 'config'])
     config_file = PathJoinSubstitution([config_dir, 'camera_params.yaml'])
-    calibration_file = PathJoinSubstitution([config_dir, 'calibration.yaml'])
 
     container = ComposableNodeContainer(
         name="camera_container",
@@ -22,10 +21,7 @@ def generate_launch_description():
                 plugin="camera_rospkg::CameraPublisher",
                 name="camera_publisher",
                 namespace=LaunchConfiguration("namespace"),
-                parameters=[
-                    config_file,
-                    {"calibration_url": calibration_file},
-                ],
+                parameters=[config_file],
                 extra_arguments=[{"use_intra_process_comms": True}],
                 autostart=False,
             ),
