@@ -280,7 +280,10 @@ void CameraPublisher::timerCb()
 
   if (has_compressed_sub) {
     std::vector<uint8_t> buf;
-    cv::imencode(".jpg", frame, buf);
+    const std::vector<int> encode_params{
+      cv::IMWRITE_JPEG_QUALITY, 80
+    };
+    cv::imencode(".jpg", frame, buf, encode_params);
     auto cmsg = std::make_unique<CompressedImage>();
     cmsg->header = header;
     cmsg->format = "jpeg";
