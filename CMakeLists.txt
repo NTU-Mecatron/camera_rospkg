@@ -21,6 +21,7 @@ set(PACKAGE_DEPENDENCIES
   "rclcpp_components"
   "sensor_msgs"
   "cv_bridge"
+  "image_transport"
   "OpenCV"
 )
 

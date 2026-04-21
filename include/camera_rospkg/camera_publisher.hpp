@@ -2,13 +2,13 @@
 
 #include <string>
 #include <memory>
-#include <vector>
 
+#include <image_transport/image_transport.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/node_options.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 #include <rclcpp_lifecycle/lifecycle_publisher.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <sensor_msgs/msg/compressed_image.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #if __has_include(<cv_bridge/cv_bridge.hpp>)
 #include <cv_bridge/cv_bridge.hpp>
@@ -45,13 +45,16 @@ private:
   double fps_;
   bool rectify_;
 
+  rclcpp::NodeOptions base_node_options_;
+  bool image_transport_ready_{false};
+
 
   // Capture
   cv::VideoCapture cap_;
 
   // Publishers (lifecycle-managed)
-  rclcpp_lifecycle::LifecyclePublisher<Image>::SharedPtr img_pub_;
-  rclcpp_lifecycle::LifecyclePublisher<CompressedImage>::SharedPtr compressed_pub_;
+  rclcpp::Node::SharedPtr transport_node_;
+  image_transport::Publisher image_pub_;
   rclcpp_lifecycle::LifecyclePublisher<CameraInfo>::SharedPtr cinfo_pub_;
 
   // Camera info / calibration

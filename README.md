@@ -7,10 +7,12 @@ ROS 2 lifecycle camera publisher as a composable node.
 | Topic | Type | Description |
 |---|---|---|
 | `/<ns>/image/raw` | `sensor_msgs/msg/Image` | BGR8 raw or rectified frame |
-| `/<ns>/image/compressed` | `sensor_msgs/msg/CompressedImage` | JPEG-compressed frame |
+| `/<ns>/image/raw/compressed` | `sensor_msgs/msg/CompressedImage` | `image_transport` compressed output for the configured base topic |
 | `/<ns>/camera_info` | `sensor_msgs/msg/CameraInfo` | Calibration info, timestamped with each frame |
 
-> Note: we do not use image_transport so that we can utilise zero-copy intra-process communication.
+> Note: raw + compressed publication is now handled through `image_transport` on a temporary non-lifecycle node created with the same node options, so intra-process communication remains enabled for pointer-based raw publication.
+
+> The image transport base topic is fixed to `image/raw`, and only the raw + compressed publisher plugins are enabled.
 
 ## Configuration
 

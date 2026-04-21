@@ -12,12 +12,23 @@
 
 #include <opencv2/imgproc.hpp>
 #include <opencv2/calib3d.hpp>
-#include <opencv2/imgcodecs.hpp>
 
 namespace camera_rospkg {
 
+namespace {
+
+constexpr char kImageBaseTopic[] = "image/raw";
+
+const std::vector<std::string> kImageTransportPubPlugins{
+  "image_transport/raw",
+  "image_transport/compressed"
+};
+
+}  // namespace
+
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
-  : rclcpp_lifecycle::LifecycleNode("camera_publisher", options)
+  : rclcpp_lifecycle::LifecycleNode("camera_publisher", options),
+    base_node_options_(options)
 {
   declare_parameter<std::string>("device", "/dev/video0");
   declare_parameter<std::string>("frame_id", "camera_optical_frame");
@@ -40,18 +51,42 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
   try {
     loadCalibration(get_parameter("calibration_url").as_string());
     openCamera();
+
+    auto transport_node_options = base_node_options_;
+    transport_node_options.start_parameter_services(false);
+    transport_node_options.start_parameter_event_publisher(false);
+
+    transport_node_ = std::make_shared<rclcpp::Node>(
+      std::string(get_name()) + "_image_transport",
+      get_namespace(),
+      transport_node_options);
+
+    transport_node_->declare_parameter<std::vector<std::string>>(
+      "image.raw.enable_pub_plugins",
+      kImageTransportPubPlugins);
+
+    image_pub_ = image_transport::create_publisher(
+      transport_node_.get(),
+      kImageBaseTopic,
+      rclcpp::SensorDataQoS().get_rmw_qos_profile());
+    image_transport_ready_ = true;
   } catch (const std::exception & e) {
     teardown();
     RCLCPP_ERROR(get_logger(), "Configuration failed: %s", e.what());
     return CallbackReturn::FAILURE;
   }
 
-  img_pub_        = create_publisher<Image>("image/raw", rclcpp::SensorDataQoS());
-  compressed_pub_ = create_publisher<CompressedImage>("image/compressed", rclcpp::SensorDataQoS());
   cinfo_pub_      = create_publisher<CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 
-  RCLCPP_INFO(get_logger(), "Configured: device=%s %dx%d @ %.1fHz rectify=%s",
-    device_.c_str(), width_, height_, fps_, rectify_ ? "true" : "false");
+  RCLCPP_INFO(
+    get_logger(),
+    "Configured: device=%s %dx%d @ %.1fHz rectify=%s image_transport base topic=%s",
+    device_.c_str(),
+    width_,
+    height_,
+    fps_,
+    rectify_ ? "true" : "false",
+    kImageBaseTopic);
   return CallbackReturn::SUCCESS;
 }
 
@@ -59,7 +94,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
 {
   (void)state;
 
-  if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
+  if (!image_transport_ready_ || !transport_node_ || !cinfo_pub_) {
     RCLCPP_ERROR(get_logger(), "Cannot activate before publishers are configured.");
     return CallbackReturn::FAILURE;
   }
@@ -68,7 +103,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
     return CallbackReturn::FAILURE;
   }
 
-  img_pub_->on_activate(); compressed_pub_->on_activate(); cinfo_pub_->on_activate();
+  cinfo_pub_->on_activate();
   const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
   timer_ = create_timer(
     std::chrono::duration_cast<std::chrono::nanoseconds>(period),
@@ -83,7 +118,9 @@ CameraPublisher::CallbackReturn CameraPublisher::on_deactivate(const rclcpp_life
   (void)state;
 
   timer_.reset();
-  img_pub_->on_deactivate(); compressed_pub_->on_deactivate(); cinfo_pub_->on_deactivate();
+  if (cinfo_pub_) {
+    cinfo_pub_->on_deactivate();
+  }
   RCLCPP_INFO(get_logger(), "Deactivated: publishing paused.");
   return CallbackReturn::SUCCESS;
 }
@@ -105,8 +142,9 @@ CameraPublisher::CallbackReturn CameraPublisher::on_shutdown(const rclcpp_lifecy
 void CameraPublisher::teardown()
 {
   timer_.reset();
-  img_pub_.reset();
-  compressed_pub_.reset();
+  image_pub_ = image_transport::Publisher();
+  image_transport_ready_ = false;
+  transport_node_.reset();
   cinfo_pub_.reset();
   cap_.release();
   curr_cinfo_ = CameraInfo{};
@@ -234,7 +272,7 @@ void CameraPublisher::buildRectifyMaps()
 
 void CameraPublisher::timerCb()
 {
-  if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
+  if (!image_transport_ready_ || !cinfo_pub_) {
     return;
   }
 
@@ -242,11 +280,10 @@ void CameraPublisher::timerCb()
     return pub->get_subscription_count() > 0 ||
            pub->get_intra_process_subscription_count() > 0;
   };
-  const bool has_raw_sub        = has_sub(img_pub_);
-  const bool has_compressed_sub = has_sub(compressed_pub_);
+  const bool has_image_sub      = image_pub_.getNumSubscribers() > 0;
   const bool has_cinfo_sub      = has_sub(cinfo_pub_);
 
-  if (!has_raw_sub && !has_compressed_sub && !has_cinfo_sub) {
+  if (!has_image_sub && !has_cinfo_sub) {
     return;
   }
 
@@ -272,20 +309,10 @@ void CameraPublisher::timerCb()
   header.stamp    = stamp;
   header.frame_id = frame_id_;
 
-  if (has_raw_sub) {
+  if (has_image_sub) {
     auto msg = std::make_unique<Image>();
     cv_bridge::CvImage(header, "bgr8", frame).toImageMsg(*msg);
-    img_pub_->publish(std::move(msg));
-  }
-
-  if (has_compressed_sub) {
-    std::vector<uint8_t> buf;
-    cv::imencode(".jpg", frame, buf);
-    auto cmsg = std::make_unique<CompressedImage>();
-    cmsg->header = header;
-    cmsg->format = "jpeg";
-    cmsg->data   = std::move(buf);
-    compressed_pub_->publish(std::move(cmsg));
+    image_pub_.publish(std::move(msg));
   }
 
   if (has_cinfo_sub) {
