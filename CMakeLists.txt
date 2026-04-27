@@ -1,10 +1,5 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.8)
 project(camera_rospkg)
-
-# C++ standard
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_definitions(-DAPI_EXPORTS)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -35,6 +30,7 @@ endforeach()
 # =============================================================================
 add_library(${PROJECT_NAME}_component SHARED
   src/camera_publisher.cpp
+  src/image_decompressor.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_component PUBLIC
@@ -52,6 +48,12 @@ rclcpp_components_register_node(
   ${PROJECT_NAME}_component
   PLUGIN "camera_rospkg::CameraPublisher"
   EXECUTABLE camera_publisher
+)
+
+rclcpp_components_register_node(
+  ${PROJECT_NAME}_component
+  PLUGIN "camera_rospkg::ImageDecompressor"
+  EXECUTABLE image_decompressor
 )
 
 # =============================================================================
