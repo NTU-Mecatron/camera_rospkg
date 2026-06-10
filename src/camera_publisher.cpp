@@ -70,7 +70,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
   LifecycleNode::on_activate(state);
 
   // Start publishing thread
-  should_publish_ = true;
+  should_publish_.store(true);
   publishing_thread_ = std::thread([this]() { publishingThreadLoop(); });
 
   RCLCPP_INFO(get_logger(), "Activated: publishing started.");
@@ -80,7 +80,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
 CameraPublisher::CallbackReturn CameraPublisher::on_deactivate(const rclcpp_lifecycle::State & state)
 {
   // Stop publishing thread
-  should_publish_ = false;
+  should_publish_.store(false);
   if (publishing_thread_.joinable()) {
     publishing_thread_.join();
   }
@@ -109,7 +109,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_shutdown(const rclcpp_lifecy
 void CameraPublisher::teardown()
 {
   // Stop publishing thread
-  should_publish_ = false;
+  should_publish_.store(false);
   if (publishing_thread_.joinable()) {
     publishing_thread_.join();
   }
