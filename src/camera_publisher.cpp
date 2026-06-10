@@ -57,8 +57,6 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
 
 CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecycle::State & state)
 {
-  LifecycleNode::on_activate(state);
-
   if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
     RCLCPP_ERROR(get_logger(), "Cannot activate before publishers are configured.");
     return CallbackReturn::FAILURE;
@@ -67,6 +65,9 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
     RCLCPP_ERROR(get_logger(), "Cannot activate before the camera device is open.");
     return CallbackReturn::FAILURE;
   }
+  
+  // This will automatically activate all lifecycle publishers
+  LifecycleNode::on_activate(state);
 
   // Start publishing thread
   should_publish_ = true;
@@ -78,13 +79,14 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
 
 CameraPublisher::CallbackReturn CameraPublisher::on_deactivate(const rclcpp_lifecycle::State & state)
 {
-  LifecycleNode::on_deactivate(state);
-
   // Stop publishing thread
   should_publish_ = false;
   if (publishing_thread_.joinable()) {
     publishing_thread_.join();
   }
+
+  // This will automatically deactivate all lifecycle publishers
+  LifecycleNode::on_deactivate(state);
 
   RCLCPP_INFO(get_logger(), "Deactivated: publishing paused.");
   return CallbackReturn::SUCCESS;
