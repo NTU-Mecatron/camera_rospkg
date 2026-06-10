@@ -300,16 +300,19 @@ void CameraPublisher::publishingThreadLoop()
     }
 
     if (has_compressed_sub) {
-      std::vector<uint8_t> buf;
-      const std::vector<int> encode_params{
-        cv::IMWRITE_JPEG_QUALITY, 80
-      };
-      cv::imencode(".jpg", frame, buf, encode_params);
-      auto cmsg = std::make_unique<CompressedImage>();
-      cmsg->header = header;
-      cmsg->format = "jpeg";
-      cmsg->data   = std::move(buf);
-      compressed_pub_->publish(std::move(cmsg));
+      try {
+        std::vector<uint8_t> buf;
+        const std::vector<int> encode_params{cv::IMWRITE_JPEG_QUALITY, 80};
+        cv::imencode(".jpg", frame, buf, encode_params);
+
+        auto cmsg = std::make_unique<CompressedImage>();
+        cmsg->header = header;
+        cmsg->format = "jpeg";
+        cmsg->data   = std::move(buf);
+        compressed_pub_->publish(std::move(cmsg));
+      } catch (const cv::Exception & e) {
+        RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 2000, "Failed to encode/publish JPEG: %s", e.what());
+      }
     }
 
     if (has_cinfo_sub) {
