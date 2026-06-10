@@ -57,8 +57,6 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
 
 CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecycle::State & state)
 {
-  (void)state;
-
   if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
     RCLCPP_ERROR(get_logger(), "Cannot activate before publishers are configured.");
     return CallbackReturn::FAILURE;
@@ -67,12 +65,13 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
     RCLCPP_ERROR(get_logger(), "Cannot activate before the camera device is open.");
     return CallbackReturn::FAILURE;
   }
+  
+  // This will automatically activate all lifecycle publishers
+  LifecycleNode::on_activate(state);
 
-  img_pub_->on_activate(); compressed_pub_->on_activate(); cinfo_pub_->on_activate();
-  const auto period = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
-  timer_ = create_timer(
-    std::chrono::duration_cast<std::chrono::nanoseconds>(period),
-    [this]() { timerCb(); });
+  // Start publishing thread
+  should_publish_.store(true);
+  publishing_thread_ = std::thread([this]() { publishingThreadLoop(); });
 
   RCLCPP_INFO(get_logger(), "Activated: publishing started.");
   return CallbackReturn::SUCCESS;
@@ -80,10 +79,15 @@ CameraPublisher::CallbackReturn CameraPublisher::on_activate(const rclcpp_lifecy
 
 CameraPublisher::CallbackReturn CameraPublisher::on_deactivate(const rclcpp_lifecycle::State & state)
 {
-  (void)state;
+  // Stop publishing thread
+  should_publish_.store(false);
+  if (publishing_thread_.joinable()) {
+    publishing_thread_.join();
+  }
 
-  timer_.reset();
-  img_pub_->on_deactivate(); compressed_pub_->on_deactivate(); cinfo_pub_->on_deactivate();
+  // This will automatically deactivate all lifecycle publishers
+  LifecycleNode::on_deactivate(state);
+
   RCLCPP_INFO(get_logger(), "Deactivated: publishing paused.");
   return CallbackReturn::SUCCESS;
 }
@@ -104,7 +108,12 @@ CameraPublisher::CallbackReturn CameraPublisher::on_shutdown(const rclcpp_lifecy
 
 void CameraPublisher::teardown()
 {
-  timer_.reset();
+  // Stop publishing thread
+  should_publish_.store(false);
+  if (publishing_thread_.joinable()) {
+    publishing_thread_.join();
+  }
+
   img_pub_.reset();
   compressed_pub_.reset();
   cinfo_pub_.reset();
@@ -232,73 +241,92 @@ void CameraPublisher::buildRectifyMaps()
               is_fisheye ? "fisheye/equidistant" : "pinhole/plumb_bob");
 }
 
-void CameraPublisher::timerCb()
+void CameraPublisher::publishingThreadLoop()
 {
-  if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
-    return;
-  }
+  const auto sleep_duration = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
 
-  auto has_sub = [](const auto & pub) {
-    return pub->get_subscription_count() > 0 ||
-           pub->get_intra_process_subscription_count() > 0;
-  };
-  const bool has_raw_sub        = has_sub(img_pub_);
-  const bool has_compressed_sub = has_sub(compressed_pub_);
-  const bool has_cinfo_sub      = has_sub(cinfo_pub_);
+  while (should_publish_) 
+  {
+    if (!img_pub_ || !compressed_pub_ || !cinfo_pub_) {
+      std::this_thread::sleep_for(sleep_duration);
+      continue;
+    }
 
-  if (!has_raw_sub && !has_compressed_sub && !has_cinfo_sub) {
-    return;
-  }
+    if (!img_pub_->is_activated() || !compressed_pub_->is_activated() || !cinfo_pub_->is_activated()) {
+      std::this_thread::sleep_for(sleep_duration);
+      continue;
+    }
 
-  cv::Mat frame;
-  if (!cap_.read(frame)) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Failed to read frame");
-    return;
-  }
-
-  if (frame.cols != width_ || frame.rows != height_) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
-      "Driver returned %dx%d, expected %dx%d.", frame.cols, frame.rows, width_, height_);
-  }
-
-  if (rectify_ && !map1_.empty()) {
-    cv::Mat rectified;
-    cv::remap(frame, rectified, map1_, map2_, cv::INTER_LINEAR);
-    frame = std::move(rectified);
-  }
-
-  const rclcpp::Time stamp = now();
-  std_msgs::msg::Header header;
-  header.stamp    = stamp;
-  header.frame_id = frame_id_;
-
-  if (has_raw_sub) {
-    auto msg = std::make_unique<Image>();
-    cv_bridge::CvImage(header, "bgr8", frame).toImageMsg(*msg);
-    img_pub_->publish(std::move(msg));
-  }
-
-  if (has_compressed_sub) {
-    std::vector<uint8_t> buf;
-    const std::vector<int> encode_params{
-      cv::IMWRITE_JPEG_QUALITY, 80
+    auto has_sub = [](const auto & pub) {
+      return pub->get_subscription_count() > 0 ||
+             pub->get_intra_process_subscription_count() > 0;
     };
-    cv::imencode(".jpg", frame, buf, encode_params);
-    auto cmsg = std::make_unique<CompressedImage>();
-    cmsg->header = header;
-    cmsg->format = "jpeg";
-    cmsg->data   = std::move(buf);
-    compressed_pub_->publish(std::move(cmsg));
-  }
+    const bool has_raw_sub        = has_sub(img_pub_);
+    const bool has_compressed_sub = has_sub(compressed_pub_);
+    const bool has_cinfo_sub      = has_sub(cinfo_pub_);
 
-  if (has_cinfo_sub) {
-    auto cinfo = std::make_unique<CameraInfo>(curr_cinfo_);
-    cinfo->header = header;
-    cinfo->width  = static_cast<uint32_t>(frame.cols);
-    cinfo->height = static_cast<uint32_t>(frame.rows);
-    cinfo_pub_->publish(std::move(cinfo));
+    if (!has_raw_sub && !has_compressed_sub && !has_cinfo_sub) {
+      std::this_thread::sleep_for(sleep_duration);
+      continue;
+    }
+
+    cv::Mat frame;
+    if (!cap_.read(frame)) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "Failed to read frame");
+      std::this_thread::sleep_for(sleep_duration);
+      continue;
+    }
+
+    if (frame.cols != width_ || frame.rows != height_) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 5000,
+        "Driver returned %dx%d, expected %dx%d.", frame.cols, frame.rows, width_, height_);
+    }
+
+    if (rectify_ && !map1_.empty()) {
+      cv::Mat rectified;
+      cv::remap(frame, rectified, map1_, map2_, cv::INTER_LINEAR);
+      frame = std::move(rectified);
+    }
+
+    const rclcpp::Time stamp = now();
+    std_msgs::msg::Header header;
+    header.stamp    = stamp;
+    header.frame_id = frame_id_;
+
+    if (has_raw_sub) {
+      auto msg = std::make_unique<Image>();
+      cv_bridge::CvImage(header, "bgr8", frame).toImageMsg(*msg);
+      img_pub_->publish(std::move(msg));
+    }
+
+    if (has_compressed_sub) {
+      try {
+        std::vector<uint8_t> buf;
+        const std::vector<int> encode_params{cv::IMWRITE_JPEG_QUALITY, 80};
+        cv::imencode(".jpg", frame, buf, encode_params);
+
+        auto cmsg = std::make_unique<CompressedImage>();
+        cmsg->header = header;
+        cmsg->format = "jpeg";
+        cmsg->data   = std::move(buf);
+        compressed_pub_->publish(std::move(cmsg));
+      } catch (const cv::Exception & e) {
+        RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 2000, "Failed to encode/publish JPEG: %s", e.what());
+      }
+    }
+
+    if (has_cinfo_sub) {
+      auto cinfo = std::make_unique<CameraInfo>(curr_cinfo_);
+      cinfo->header = header;
+      cinfo->width  = static_cast<uint32_t>(frame.cols);
+      cinfo->height = static_cast<uint32_t>(frame.rows);
+      cinfo_pub_->publish(std::move(cinfo));
+    }
+
+    std::this_thread::sleep_for(sleep_duration);
   }
 }
+
 
 } // namespace camera_rospkg
 

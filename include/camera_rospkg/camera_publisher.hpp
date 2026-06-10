@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <thread>
+#include <atomic>
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
@@ -60,14 +62,15 @@ private:
   // Rectification maps (for plumb_bob or fisheye)
   cv::Mat map1_, map2_;
 
-  // Timer
-  rclcpp::TimerBase::SharedPtr timer_;
+  // Publishing thread
+  std::thread publishing_thread_;
+  std::atomic<bool> should_publish_{false};
 
   // Helpers
   void loadCalibration(const std::string & calibration_url);
   void openCamera();
   void buildRectifyMaps();
-  void timerCb();
+  void publishingThreadLoop();  // runs in separate thread
   void teardown();  // shared cleanup logic
 };
 
