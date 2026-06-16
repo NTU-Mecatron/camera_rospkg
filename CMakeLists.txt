@@ -35,6 +35,7 @@ endforeach()
 # =============================================================================
 add_library(${PROJECT_NAME}_component SHARED
   src/camera_publisher.cpp
+  src/image_decompressor.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_component PUBLIC
@@ -52,6 +53,12 @@ rclcpp_components_register_node(
   ${PROJECT_NAME}_component
   PLUGIN "camera_rospkg::CameraPublisher"
   EXECUTABLE camera_publisher
+)
+
+rclcpp_components_register_node(
+  ${PROJECT_NAME}_component
+  PLUGIN "camera_rospkg::ImageDecompressor"
+  EXECUTABLE image_decompressor
 )
 
 # =============================================================================
