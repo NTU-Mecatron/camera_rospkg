@@ -24,6 +24,8 @@ All node parameters live in [`config/camera_params.yaml`](config/camera_params.y
 | `height` | `480` | Capture height (px) |
 | `fps` | `30.0` | Capture framerate |
 | `rectify` | `true` | Apply undistort/remap using calibration |
+| `output_width` | `0` | If >0, downscale (INTER_AREA) to this width after rectification; `camera_info` intrinsics are scaled to match |
+| `output_height` | `0` | Output height, set together with `output_width` |
 
 Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
