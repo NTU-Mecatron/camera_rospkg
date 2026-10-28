@@ -8,6 +8,15 @@
 #include <chrono>
 #include <vector>
 
+#include <cerrno>
+#include <cstring>
+#include <map>
+
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <linux/videodev2.h>
+
 #include <yaml-cpp/yaml.h>
 
 #include <opencv2/imgproc.hpp>
@@ -15,6 +24,51 @@
 #include <opencv2/imgcodecs.hpp>
 
 namespace camera_rospkg {
+
+namespace {
+
+// Same name mangling as v4l2-ctl: "White Balance Temperature, Auto" -> "white_balance_temperature_auto"
+std::string controlVarName(const char * name)
+{
+  std::string s;
+  bool add_underscore = false;
+  for (; *name; ++name) {
+    if (std::isalnum(static_cast<unsigned char>(*name))) {
+      if (add_underscore) s += '_';
+      add_underscore = false;
+      s += static_cast<char>(std::tolower(static_cast<unsigned char>(*name)));
+    } else if (!s.empty()) {
+      add_underscore = true;
+    }
+  }
+  return s;
+}
+
+std::string trim(const std::string & s)
+{
+  const auto b = s.find_first_not_of(" \t");
+  const auto e = s.find_last_not_of(" \t");
+  return b == std::string::npos ? "" : s.substr(b, e - b + 1);
+}
+
+// Parses "name=value" with an integer value
+bool parseControl(const std::string & entry, std::string & name, int & value)
+{
+  const auto eq = entry.find('=');
+  if (eq == std::string::npos) return false;
+  name = trim(entry.substr(0, eq));
+  const std::string v = trim(entry.substr(eq + 1));
+  if (name.empty() || v.empty()) return false;
+  try {
+    size_t pos = 0;
+    value = std::stoi(v, &pos);
+    return pos == v.size();
+  } catch (const std::exception &) {
+    return false;
+  }
+}
+
+} // namespace
 
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   : rclcpp_lifecycle::LifecycleNode("camera_publisher", options)
@@ -28,6 +82,18 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   declare_parameter<std::string>("calibration_url", "");
   declare_parameter<int>("output_width", 0);
   declare_parameter<int>("output_height", 0);
+  declare_parameter<std::vector<std::string>>("v4l2_controls", std::vector<std::string>{});
+
+  // Live tuning: `ros2 param set ... v4l2_controls "['saturation=80']"` applies immediately while the camera is open;
+  // otherwise the value is applied on the next configure
+  param_cb_handle_ = add_post_set_parameters_callback(
+    [this](const std::vector<rclcpp::Parameter> & params) {
+      for (const auto & p : params) {
+        if (p.get_name() == "v4l2_controls" && !v4l2_path_.empty()) {
+          applyV4l2Controls(p.as_string_array());
+        }
+      }
+    });
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifecycle::State &)
@@ -52,6 +118,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
     // Rectify maps are built at capture resolution, so only scale the published intrinsics afterwards
     if (shouldResize()) scaleCameraInfo();
     openCamera();
+    applyV4l2Controls(get_parameter("v4l2_controls").as_string_array());
   } catch (const std::exception & e) {
     teardown();
     RCLCPP_ERROR(get_logger(), "Configuration failed: %s", e.what());
@@ -131,6 +198,7 @@ void CameraPublisher::teardown()
   compressed_pub_.reset();
   cinfo_pub_.reset();
   cap_.release();
+  v4l2_path_.clear();
   curr_cinfo_ = CameraInfo{};
   map1_ = cv::Mat{};
   map2_ = cv::Mat{};
@@ -163,9 +231,82 @@ void CameraPublisher::openCamera()
     cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
     cap_.set(cv::CAP_PROP_FPS,          fps_);
+    v4l2_path_ = is_index ? "/dev/video" + device_ : device_;
   }
 
   RCLCPP_INFO(get_logger(), "Opened %s '%s'", is_file ? "file" : "camera", device_.c_str());
+}
+
+void CameraPublisher::applyV4l2Controls(const std::vector<std::string> & entries)
+{
+  if (entries.empty()) return;
+  if (v4l2_path_.empty()) {
+    RCLCPP_WARN(get_logger(), "v4l2_controls ignored: '%s' is not a V4L2 device", device_.c_str());
+    return;
+  }
+
+  // Separate fd: control ioctls are allowed alongside OpenCV's streaming fd
+  const int fd = ::open(v4l2_path_.c_str(), O_RDWR);
+  if (fd < 0) {
+    RCLCPP_WARN(get_logger(), "v4l2_controls ignored: cannot open %s (%s)", v4l2_path_.c_str(), std::strerror(errno));
+    return;
+  }
+
+  // Enumerate the device's controls so the names printed by `v4l2-ctl --list-ctrls` can be used as-is
+  std::map<std::string, v4l2_queryctrl> available;
+  v4l2_queryctrl q{};
+  q.id = V4L2_CTRL_FLAG_NEXT_CTRL;
+  while (::ioctl(fd, VIDIOC_QUERYCTRL, &q) == 0) {
+    const bool settable = q.type == V4L2_CTRL_TYPE_INTEGER || q.type == V4L2_CTRL_TYPE_BOOLEAN ||
+                          q.type == V4L2_CTRL_TYPE_MENU || q.type == V4L2_CTRL_TYPE_INTEGER_MENU;
+    if (settable && !(q.flags & (V4L2_CTRL_FLAG_DISABLED | V4L2_CTRL_FLAG_READ_ONLY))) {
+      available[controlVarName(reinterpret_cast<const char *>(q.name))] = q;
+    }
+    q.id |= V4L2_CTRL_FLAG_NEXT_CTRL;
+  }
+
+  bool unknown = false;
+  // Applied in list order: put auto-mode switches (e.g. auto_exposure) before the manual values they unlock
+  for (const auto & entry : entries) {
+    std::string name;
+    int value = 0;
+    if (!parseControl(entry, name, value)) {
+      RCLCPP_WARN(get_logger(), "v4l2_controls: '%s' is not \"name=<integer>\", skipped", entry.c_str());
+      continue;
+    }
+    const auto it = available.find(name);
+    if (it == available.end()) {
+      RCLCPP_WARN(get_logger(), "v4l2_controls: '%s' is not supported by %s, skipped", name.c_str(), v4l2_path_.c_str());
+      unknown = true;
+      continue;
+    }
+    const auto & qc = it->second;
+    if (value < qc.minimum || value > qc.maximum) {
+      RCLCPP_WARN(get_logger(), "v4l2_controls: %s=%d out of range [%d, %d], skipped",
+        name.c_str(), value, qc.minimum, qc.maximum);
+      continue;
+    }
+    v4l2_control ctrl{};
+    ctrl.id = qc.id;
+    ctrl.value = value;
+    if (::ioctl(fd, VIDIOC_S_CTRL, &ctrl) < 0) {
+      // EACCES/EBUSY usually means an auto mode is still on (e.g. exposure_time_absolute with auto exposure)
+      RCLCPP_WARN(get_logger(), "v4l2_controls: failed to set %s=%d (%s)", name.c_str(), value, std::strerror(errno));
+    } else {
+      RCLCPP_INFO(get_logger(), "v4l2_controls: set %s=%d", name.c_str(), value);
+    }
+  }
+
+  if (unknown) {
+    std::string names;
+    for (const auto & [n, qc] : available) {
+      names += "\n  " + n + " [" + std::to_string(qc.minimum) + ", " + std::to_string(qc.maximum) +
+               "] default=" + std::to_string(qc.default_value);
+    }
+    RCLCPP_INFO(get_logger(), "Controls available on %s:%s", v4l2_path_.c_str(), names.c_str());
+  }
+
+  ::close(fd);
 }
 
 void CameraPublisher::loadCalibration(const std::string& calibration_url)

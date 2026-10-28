@@ -51,6 +51,8 @@ private:
 
   // Capture
   cv::VideoCapture cap_;
+  std::string v4l2_path_;  // device node for control ioctls; empty when closed or reading a video file
+  rclcpp::node_interfaces::PostSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
   // Publishers (lifecycle-managed)
   rclcpp_lifecycle::LifecyclePublisher<Image>::SharedPtr img_pub_;
@@ -70,6 +72,7 @@ private:
   // Helpers
   void loadCalibration(const std::string & calibration_url);
   void openCamera();
+  void applyV4l2Controls(const std::vector<std::string> & entries);  // "name=value", names as in v4l2-ctl
   void buildRectifyMaps();
   void scaleCameraInfo();  // rescale K/P from capture to output resolution
   bool shouldResize() const;

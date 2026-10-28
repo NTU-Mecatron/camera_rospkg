@@ -26,6 +26,30 @@ All node parameters live in [`config/camera_params.yaml`](config/camera_params.y
 | `rectify` | `true` | Apply undistort/remap using calibration |
 | `output_width` | `0` | If >0, downscale (INTER_AREA) to this width after rectification; `camera_info` intrinsics are scaled to match |
 | `output_height` | `0` | Output height, set together with `output_width` |
+| `v4l2_controls` | `[]` | Camera hardware settings as `"name=value"` strings, applied in order (see below) |
+
+### Camera hardware controls (`v4l2_controls`)
+
+Saturation, contrast, white balance, exposure etc. are set on the camera itself, so they cost no CPU and are applied
+before MJPG compression. Names and ranges come from the device, so any V4L2 camera works without code changes:
+
+```bash
+v4l2-ctl -d /dev/video0 --list-ctrls      # names, ranges and defaults for this camera
+```
+
+```yaml
+v4l2_controls:
+  - "white_balance_automatic=0"           # turn auto modes off before the manual values they unlock
+  - "white_balance_temperature=5000"
+  - "saturation=72"
+```
+
+Entries are applied in list order on configure. Unknown names, bad values and out-of-range values are skipped with a
+warning; an unknown name also logs every control the camera supports. To tune live while the camera is running:
+
+```bash
+ros2 param set /<ns>/perception/camera_publisher_front v4l2_controls "['saturation=80', 'contrast=40']"
+```
 
 Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
