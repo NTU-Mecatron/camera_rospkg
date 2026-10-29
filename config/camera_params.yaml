@@ -7,3 +7,9 @@
     height:          480
     fps:             30.0
     rectify:         true                       # apply undistort/remap using calibration
+    output_width:    0                          # >0: downscale to this size before publishing (0 = off)
+    output_height:   0
+    # v4l2_controls:                            # camera hardware settings, names from `v4l2-ctl --list-ctrls`
+    #   - "saturation=72"
+    #   - "white_balance_automatic=0"
+    #   - "white_balance_temperature=5000"
