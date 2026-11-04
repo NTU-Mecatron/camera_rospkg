@@ -48,6 +48,7 @@ private:
   bool rectify_;
   int output_width_;   // 0 = publish at capture resolution
   int output_height_;
+  int saturation_;     // <0 = leave camera setting unchanged
 
   // Capture
   cv::VideoCapture cap_;

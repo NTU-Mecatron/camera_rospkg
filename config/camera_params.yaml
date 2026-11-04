@@ -9,3 +9,4 @@
     rectify:         true                       # apply undistort/remap using calibration
     output_width:    0                          # >0: downscale to this size before publishing (0 = off)
     output_height:   0
+    saturation:      -1                         # >=0: camera saturation in the driver's range (-1 = leave unchanged)

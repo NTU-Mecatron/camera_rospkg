@@ -28,6 +28,7 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   declare_parameter<std::string>("calibration_url", "");
   declare_parameter<int>("output_width", 0);
   declare_parameter<int>("output_height", 0);
+  declare_parameter<int>("saturation", -1);
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifecycle::State &)
@@ -40,6 +41,7 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
   rectify_     = get_parameter("rectify").as_bool();
   output_width_  = get_parameter("output_width").as_int();
   output_height_ = get_parameter("output_height").as_int();
+  saturation_    = get_parameter("saturation").as_int();
 
   if ((output_width_ > 0) != (output_height_ > 0)) {
     RCLCPP_WARN(get_logger(), "output_width and output_height must both be set (got %dx%d), disabling resize",
@@ -163,6 +165,15 @@ void CameraPublisher::openCamera()
     cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
     cap_.set(cv::CAP_PROP_FPS,          fps_);
+
+    // V4L2 backend passes the raw driver value through, so the range is the camera's (see v4l2-ctl --list-ctrls)
+    if (saturation_ >= 0) {
+      if (!cap_.set(cv::CAP_PROP_SATURATION, saturation_)) {
+        RCLCPP_WARN(get_logger(), "Camera rejected saturation=%d", saturation_);
+      }
+      RCLCPP_INFO(get_logger(), "Saturation: requested %d, camera reports %.0f",
+        saturation_, cap_.get(cv::CAP_PROP_SATURATION));
+    }
   }
 
   RCLCPP_INFO(get_logger(), "Opened %s '%s'", is_file ? "file" : "camera", device_.c_str());

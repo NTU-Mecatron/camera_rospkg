@@ -26,6 +26,7 @@ All node parameters live in [`config/camera_params.yaml`](config/camera_params.y
 | `rectify` | `true` | Apply undistort/remap using calibration |
 | `output_width` | `0` | If >0, downscale (INTER_AREA) to this width after rectification; `camera_info` intrinsics are scaled to match |
 | `output_height` | `0` | Output height, set together with `output_width` |
+| `saturation` | `-1` | If >=0, set camera saturation (`cv::CAP_PROP_SATURATION`) on configure; raw driver value, range from `v4l2-ctl --list-ctrls`. -1 leaves it unchanged |
 
 Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
