@@ -46,7 +46,8 @@ private:
   int height_;
   double fps_;
   bool rectify_;
-
+  int output_width_;   // 0 = publish at capture resolution
+  int output_height_;
 
   // Capture
   cv::VideoCapture cap_;
@@ -70,6 +71,8 @@ private:
   void loadCalibration(const std::string & calibration_url);
   void openCamera();
   void buildRectifyMaps();
+  void scaleCameraInfo();  // rescale K/P from capture to output resolution
+  bool shouldResize() const;
   void publishingThreadLoop();  // runs in separate thread
   void teardown();  // shared cleanup logic
 };

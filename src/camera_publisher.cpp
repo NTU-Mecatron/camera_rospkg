@@ -26,6 +26,8 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   declare_parameter<double>("fps", 30.0);
   declare_parameter<bool>("rectify", true);
   declare_parameter<std::string>("calibration_url", "");
+  declare_parameter<int>("output_width", 0);
+  declare_parameter<int>("output_height", 0);
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifecycle::State &)
@@ -36,9 +38,19 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
   height_      = get_parameter("height").as_int();
   fps_         = get_parameter("fps").as_double();
   rectify_     = get_parameter("rectify").as_bool();
+  output_width_  = get_parameter("output_width").as_int();
+  output_height_ = get_parameter("output_height").as_int();
+
+  if ((output_width_ > 0) != (output_height_ > 0)) {
+    RCLCPP_WARN(get_logger(), "output_width and output_height must both be set (got %dx%d), disabling resize",
+      output_width_, output_height_);
+    output_width_ = output_height_ = 0;
+  }
 
   try {
     loadCalibration(get_parameter("calibration_url").as_string());
+    // Rectify maps are built at capture resolution, so only scale the published intrinsics afterwards
+    if (shouldResize()) scaleCameraInfo();
     openCamera();
   } catch (const std::exception & e) {
     teardown();
@@ -50,8 +62,9 @@ CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifec
   compressed_pub_ = create_publisher<CompressedImage>("image/compressed", rclcpp::SensorDataQoS());
   cinfo_pub_      = create_publisher<CameraInfo>("camera_info", rclcpp::SensorDataQoS());
 
-  RCLCPP_INFO(get_logger(), "Configured: device=%s %dx%d @ %.1fHz rectify=%s",
-    device_.c_str(), width_, height_, fps_, rectify_ ? "true" : "false");
+  RCLCPP_INFO(get_logger(), "Configured: device=%s %dx%d @ %.1fHz rectify=%s output=%dx%d",
+    device_.c_str(), width_, height_, fps_, rectify_ ? "true" : "false",
+    shouldResize() ? output_width_ : width_, shouldResize() ? output_height_ : height_);
   return CallbackReturn::SUCCESS;
 }
 
@@ -241,6 +254,32 @@ void CameraPublisher::buildRectifyMaps()
               is_fisheye ? "fisheye/equidistant" : "pinhole/plumb_bob");
 }
 
+bool CameraPublisher::shouldResize() const
+{
+  return output_width_ > 0 && (output_width_ != width_ || output_height_ != height_);
+}
+
+void CameraPublisher::scaleCameraInfo()
+{
+  const double sx = static_cast<double>(output_width_) / width_;
+  const double sy = static_cast<double>(output_height_) / height_;
+
+  // Principal point uses OpenCV's pixel-centre convention: (c + 0.5) * s - 0.5
+  auto & k = curr_cinfo_.k;  // [fx 0 cx; 0 fy cy; 0 0 1]
+  k[0] *= sx; k[2] = (k[2] + 0.5) * sx - 0.5;
+  k[4] *= sy; k[5] = (k[5] + 0.5) * sy - 0.5;
+
+  auto & p = curr_cinfo_.p;  // [fx' 0 cx' Tx; 0 fy' cy' Ty; 0 0 1 0]
+  p[0] *= sx; p[2] = (p[2] + 0.5) * sx - 0.5; p[3] *= sx;
+  p[5] *= sy; p[6] = (p[6] + 0.5) * sy - 0.5; p[7] *= sy;
+
+  curr_cinfo_.width  = static_cast<uint32_t>(output_width_);
+  curr_cinfo_.height = static_cast<uint32_t>(output_height_);
+
+  RCLCPP_INFO(get_logger(), "Downscaling %dx%d -> %dx%d (INTER_AREA); CameraInfo intrinsics scaled.",
+    width_, height_, output_width_, output_height_);
+}
+
 void CameraPublisher::publishingThreadLoop()
 {
   const auto sleep_duration = std::chrono::duration<double>(1.0 / std::max(1.0, fps_));
@@ -286,6 +325,13 @@ void CameraPublisher::publishingThreadLoop()
       cv::Mat rectified;
       cv::remap(frame, rectified, map1_, map2_, cv::INTER_LINEAR);
       frame = std::move(rectified);
+    }
+
+    // INTER_AREA averages source pixels, suppressing noise and chroma fringes instead of aliasing them
+    if (shouldResize()) {
+      cv::Mat resized;
+      cv::resize(frame, resized, cv::Size(output_width_, output_height_), 0, 0, cv::INTER_AREA);
+      frame = std::move(resized);
     }
 
     const rclcpp::Time stamp = now();
