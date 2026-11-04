@@ -10,4 +10,11 @@
     output_width:    0                          # >0: downscale to this size before publishing (0 = off)
     output_height:   0
     # Camera controls (optional, raw driver values; see README). Left out = camera's own setting.
-    # saturation:    10
+    # white_balance_automatic: 1        # 0/1; set 0 for white_balance_temperature to take effect
+    # white_balance_temperature: 4500   # 2300..6500
+    # auto_exposure: 0                  # menu: 0 = auto, 1 = manual; set 1 for exposure_time_absolute to take effect
+    # exposure_time_absolute: 5         # 5..660
+    # gain: 168                         # 168..1600 (default is the minimum)
+    # brightness: 0                     # -64..64
+    # contrast: 10                      # 0..20
+    # saturation: 10 
