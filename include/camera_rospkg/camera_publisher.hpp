@@ -70,6 +70,7 @@ private:
   // Helpers
   void loadCalibration(const std::string & calibration_url);
   void openCamera();
+  void applyCameraControls();  // set the camera controls given in params
   void buildRectifyMaps();
   void scaleCameraInfo();  // rescale K/P from capture to output resolution
   bool shouldResize() const;

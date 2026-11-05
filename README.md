@@ -29,6 +29,23 @@ All node parameters live in [`config/camera_params.yaml`](config/camera_params.y
 
 Camera intrinsics are stored in [`config/calibration.yaml`](config/calibration.yaml).
 
+### Camera controls
+
+Optional integer params, applied through `cv::VideoCapture::set` when the camera is configured. Leave one out to keep the camera's own setting. Values are raw driver values: names, ranges and defaults come from `v4l2-ctl -d <device> --list-ctrls`. The log shows the value the camera reports back for each one.
+
+| Parameter | OpenCV property | Note |
+|---|---|---|
+| `white_balance_automatic` | `CAP_PROP_AUTO_WB` | Set 0 for `white_balance_temperature` to take effect |
+| `white_balance_temperature` | `CAP_PROP_WB_TEMPERATURE` | |
+| `auto_exposure` | `CAP_PROP_AUTO_EXPOSURE` | Menu value; manual mode needed for `exposure_time_absolute` |
+| `exposure_time_absolute` | `CAP_PROP_EXPOSURE` | |
+| `gain` | `CAP_PROP_GAIN` | |
+| `brightness` | `CAP_PROP_BRIGHTNESS` | |
+| `contrast` | `CAP_PROP_CONTRAST` | |
+| `saturation` | `CAP_PROP_SATURATION` | |
+
+Changes take effect on the next configure (`ros2 param set`, then deactivate/cleanup/configure/activate).
+
 ## Launch
 
 With a custom namespace:

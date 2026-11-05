@@ -16,6 +16,24 @@
 
 namespace camera_rospkg {
 
+namespace {
+
+// Camera controls set through cv::VideoCapture; names match `v4l2-ctl --list-ctrls`.
+// Applied in this order: each auto mode goes before the value it gates, which the driver ignores while auto is on.
+struct CameraControl { const char * name; int prop; };
+constexpr CameraControl kCameraControls[] = {
+  {"white_balance_automatic",   cv::CAP_PROP_AUTO_WB},
+  {"white_balance_temperature", cv::CAP_PROP_WB_TEMPERATURE},
+  {"auto_exposure",             cv::CAP_PROP_AUTO_EXPOSURE},
+  {"exposure_time_absolute",    cv::CAP_PROP_EXPOSURE},
+  {"gain",                      cv::CAP_PROP_GAIN},
+  {"brightness",                cv::CAP_PROP_BRIGHTNESS},
+  {"contrast",                  cv::CAP_PROP_CONTRAST},
+  {"saturation",                cv::CAP_PROP_SATURATION},
+};
+
+}  // namespace
+
 CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   : rclcpp_lifecycle::LifecycleNode("camera_publisher", options)
 {
@@ -28,6 +46,10 @@ CameraPublisher::CameraPublisher(const rclcpp::NodeOptions & options)
   declare_parameter<std::string>("calibration_url", "");
   declare_parameter<int>("output_width", 0);
   declare_parameter<int>("output_height", 0);
+  // No default: a control left out of the params keeps the camera's own setting
+  for (const auto & c : kCameraControls) {
+    declare_parameter(c.name, rclcpp::ParameterType::PARAMETER_INTEGER);
+  }
 }
 
 CameraPublisher::CallbackReturn CameraPublisher::on_configure(const rclcpp_lifecycle::State &)
@@ -163,9 +185,25 @@ void CameraPublisher::openCamera()
     cap_.set(cv::CAP_PROP_FRAME_WIDTH,  width_);
     cap_.set(cv::CAP_PROP_FRAME_HEIGHT, height_);
     cap_.set(cv::CAP_PROP_FPS,          fps_);
+    // After the format is set: some UVC cameras reset their image controls on a format change
+    applyCameraControls();
   }
 
   RCLCPP_INFO(get_logger(), "Opened %s '%s'", is_file ? "file" : "camera", device_.c_str());
+}
+
+void CameraPublisher::applyCameraControls()
+{
+  // V4L2 backend passes the raw driver value through, so ranges are the camera's (see v4l2-ctl --list-ctrls)
+  for (const auto & c : kCameraControls) {
+    rclcpp::Parameter p;
+    if (!get_parameter(c.name, p)) continue;
+    const int value = static_cast<int>(p.as_int());
+    if (!cap_.set(c.prop, value)) {
+      RCLCPP_WARN(get_logger(), "Camera rejected %s=%d", c.name, value);
+    }
+    RCLCPP_INFO(get_logger(), "%s: requested %d, camera reports %.0f", c.name, value, cap_.get(c.prop));
+  }
 }
 
 void CameraPublisher::loadCalibration(const std::string& calibration_url)
